@@ -44,12 +44,21 @@ export async function initializePandoc() {
         const pandocUrl = new URL('pandoc.wasm', new URL(baseHref, window.location.href)).href;
         console.log('📍 Pandoc URL:', pandocUrl);
         
+        console.log('🌐 Fetching pandoc.wasm...');
+        const response = await fetch(pandocUrl);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch pandoc.wasm: ${response.status} ${response.statusText}`);
+        }
+        console.log('✅ Fetch successful, size:', response.headers.get('content-length'), 'bytes');
+        
+        console.log('⚙️ Instantiating WebAssembly module...');
         const { instance } = await WebAssembly.instantiateStreaming(
-            fetch(pandocUrl),
+            response,
             {
                 wasi_snapshot_preview1: wasi.wasiImport,
             }
         );
+        console.log('✅ WebAssembly instantiation complete');
         
         console.log('🔧 Initializing WASI and Haskell runtime...');
         wasi.initialize(instance);

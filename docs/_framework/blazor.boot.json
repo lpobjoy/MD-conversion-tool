@@ -1,13 +1,13 @@
 {
   "mainAssemblyName": "MDConverter",
   "resources": {
-    "hash": "sha256-e11Pm30Q2LusBEHkAIZYMcmDvOkS1aadZGaRHZ5tuEI=",
+    "hash": "sha256-d/qeUf/zk7GuqjfRJmDqiqzRQtJQySus30Et1K3d2yQ=",
     "fingerprinting": {
       "DocumentFormat.OpenXml.Framework.ucnh65lgaf.wasm": "DocumentFormat.OpenXml.Framework.wasm",
       "DocumentFormat.OpenXml.o01liigcfy.wasm": "DocumentFormat.OpenXml.wasm",
       "HtmlAgilityPack.st8ng737vz.wasm": "HtmlAgilityPack.wasm",
       "Markdig.b3xwtrjo89.wasm": "Markdig.wasm",
-      "MDConverter.4beoi0pdo4.wasm": "MDConverter.wasm",
+      "MDConverter.9abcbfxwtl.wasm": "MDConverter.wasm",
       "Microsoft.AspNetCore.Components.y7hvu8muzj.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Web.kskos1h0e2.wasm": "Microsoft.AspNetCore.Components.Web.wasm",
       "Microsoft.AspNetCore.Components.WebAssembly.htbtt4rsib.wasm": "Microsoft.AspNetCore.Components.WebAssembly.wasm",
@@ -93,7 +93,7 @@
       "DocumentFormat.OpenXml.o01liigcfy.wasm": "sha256-aNIeSG4cPFoEI+ByIK9qJcUAiLC51K4Ivfx3ErpB+XQ=",
       "HtmlAgilityPack.st8ng737vz.wasm": "sha256-cAgxQhMHBpYiWAE4lE7AzfHjP8poxbxtLgsy1oRF+cU=",
       "Markdig.b3xwtrjo89.wasm": "sha256-hyj+5aHc/Z0gokcosJ8D9/8TtYpRRyZJHI9CDtuo4kw=",
-      "MDConverter.4beoi0pdo4.wasm": "sha256-cIA4ocqGVzA8Z27iQRicNmJgHyOkDrzBXsnS+BKTXJ8=",
+      "MDConverter.9abcbfxwtl.wasm": "sha256-36TzPAgqf7WQBDZ/7xWf+PPHYpi+SOg2pFEoP32/3QA=",
       "Microsoft.AspNetCore.Components.y7hvu8muzj.wasm": "sha256-Erld1Qbz6s32+o3CgVyz7yv8S3QrElNIPiwelS1e42M=",
       "Microsoft.AspNetCore.Components.Web.kskos1h0e2.wasm": "sha256-RM9f86ISHtoLoE4ZTLWYev21d4PRbuqaqHTCJ9j6Cxg=",
       "Microsoft.AspNetCore.Components.WebAssembly.htbtt4rsib.wasm": "sha256-66H1CgRTQGKDukZJ/gfOjYf6xsG0ZwVLFXKSwKkObq0=",

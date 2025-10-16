@@ -767,8 +767,14 @@ public class Example {
                 Console.WriteLine($"Updated markdown length: {updatedMarkdown.Length}");
                 Console.WriteLine($"Number of image references: {Regex.Matches(updatedMarkdown, @"!\[Mermaid Diagram").Count}");
                 
-                // Generate DOCX if Pandoc format selected
-                if (selectedFormat == ExportFormat.Pandoc)
+                Console.WriteLine($"🔍 Checking conversion trigger: selectedFormat={selectedFormat}, outputFormat={outputFormat}, conversionMode={conversionMode}");
+                
+                // Generate document - check if we need to convert (not just "html" standalone output)
+                // Convert if: DOCX, PDF, PPTX, Beamer, or RevealJS
+                bool shouldConvert = outputFormat != "html" || conversionMode == "pandoc";
+                Console.WriteLine($"🎯 Should convert: {shouldConvert}");
+                
+                if (shouldConvert)
                 {
                     statusMessage = $"Step 6/6: Generating document...";
                     StateHasChanged();

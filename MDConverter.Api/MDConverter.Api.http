@@ -1,0 +1,6 @@
+@MDConverter.Api_HostAddress = http://localhost:5072
+
+GET {{MDConverter.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

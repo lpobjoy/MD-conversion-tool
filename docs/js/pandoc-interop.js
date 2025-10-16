@@ -39,8 +39,13 @@ export async function initializePandoc() {
         const wasi = new WASI(args, env, fds, options);
         
         console.log('📦 Loading pandoc.wasm module...');
+        // Use document.baseURI to get the correct base path for GitHub Pages
+        const baseHref = document.querySelector('base')?.getAttribute('href') || '/';
+        const pandocUrl = new URL('pandoc.wasm', new URL(baseHref, window.location.href)).href;
+        console.log('📍 Pandoc URL:', pandocUrl);
+        
         const { instance } = await WebAssembly.instantiateStreaming(
-            fetch("/pandoc.wasm"),
+            fetch(pandocUrl),
             {
                 wasi_snapshot_preview1: wasi.wasiImport,
             }

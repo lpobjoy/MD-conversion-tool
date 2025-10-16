@@ -462,7 +462,7 @@ public class Example {
 | Data 4   | Data 5   | Data 6   |
 ";
 
-    private ExportFormat selectedFormat = ExportFormat.Pandoc; // Default to Pandoc workflow
+    private ExportFormat selectedFormat = ExportFormat.Files; // Legacy: Changed from Pandoc to Files to prevent duplicate conversion
     private string conversionMode = "pandoc"; // "pandoc" or "custom"
     private string outputFormat = "docx"; // "docx", "pdf", or "html"
     private string pandocCommand = "";

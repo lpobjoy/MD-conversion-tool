@@ -1,10 +1,13 @@
-# 📄 MD Converter - Professional Markdown Document Converter
+# 📄 Markdown Document Converter
 
 [![.NET](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
 [![Blazor](https://img.shields.io/badge/Blazor-WebAssembly-512BD4?logo=blazor)](https://blazor.net/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Live Demo](https://img.shields.io/badge/Demo-Live-success?logo=github)](https://lpobjoy.github.io/MD-conversion-tool/)
 
-A powerful, privacy-focused Markdown to Document converter built with Blazor WebAssembly that runs **entirely in your browser**! Convert Markdown files with Mermaid diagrams into professional Word documents, PDFs, or HTML with zero server dependencies.
+> 🚀 **[Try it now - Live Demo!](https://lpobjoy.github.io/MD-conversion-tool/)**
+
+A powerful, privacy-focused Markdown to Document and Presentation converter built with Blazor WebAssembly that runs **entirely in your browser**! Convert Markdown files with Mermaid diagrams into professional documents (Word, PDF, HTML) and presentations (PowerPoint, Beamer, Reveal.js) with zero server dependencies.
 
 Perfect for AI agents, developers, and anyone who needs high-quality document conversion with diagram support.
 
@@ -14,6 +17,9 @@ Perfect for AI agents, developers, and anyone who needs high-quality document co
 - **Word Documents (DOCX)** - Production-quality output using Pandoc WASM
 - **PDF Generation** - Browser-based print-to-PDF with perfect formatting
 - **HTML Export** - Standalone files with embedded images and diagrams
+- **PowerPoint (PPTX)** - Create presentations from markdown (each heading becomes a slide)
+- **Beamer** - LaTeX presentation slides for academic use
+- **Reveal.js** - Interactive HTML presentations
 
 ### 📊 Advanced Diagram Support
 - **Mermaid.js Integration** - Full support for flowcharts, sequence diagrams, class diagrams, and more
@@ -91,9 +97,14 @@ dotnet publish -c Release -o publish
    - **Custom Converter** - Alternative .NET-based converter
 
 3. **📄 Select Output Format**
-   - **Word (DOCX)** - For editing in Microsoft Word
-   - **PDF** - Opens print dialog, choose "Save as PDF"
-   - **HTML** - Standalone web page with embedded content
+   - **Documents:**
+     - **Word (DOCX)** - For editing in Microsoft Word
+     - **PDF** - Opens print dialog, choose "Save as PDF"
+     - **HTML** - Standalone web page with embedded content
+   - **Presentations:**
+     - **PowerPoint (PPTX)** - Slides for PowerPoint/Google Slides
+     - **Beamer** - LaTeX academic presentations
+     - **Reveal.js** - Interactive web presentations
 
 4. **✨ Convert & Download**
    - Click the convert button
@@ -206,9 +217,20 @@ Simply upload the contents of the `publish/wwwroot/` folder.
 # Build production version
 dotnet publish -c Release -o publish
 
-# The static files are in publish/wwwroot/
-# Upload to GitHub Pages or any static host
+# Copy to docs folder (GitHub Pages source)
+rm -rf docs
+cp -r publish/wwwroot docs
+
+# Commit and push
+git add docs
+git commit -m "Deploy to GitHub Pages"
+git push origin main
+
+# Enable GitHub Pages:
+# Go to Settings > Pages > Source: Deploy from a branch > Branch: main > Folder: /docs
 ```
+
+**Important:** Update `<base href="/MD-conversion-tool/" />` in `wwwroot/index.html` to match your repository name.
 
 ### Deploy to Azure Static Web Apps
 

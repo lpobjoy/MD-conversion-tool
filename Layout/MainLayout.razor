@@ -1,16 +1,83 @@
 ﻿@inherits LayoutComponentBase
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
+@using MDConverter.Services
+@inject AppState AppState
+@inject NavigationManager Navigation
 
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+<div class="page-no-sidebar">
+    <!-- Top Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="">
+                <div>
+                    <div class="fw-bold">
+                        <i class="bi bi-file-earmark-text"></i> Markdown Document Converter
+                    </div>
+                    <small class="d-block" style="font-size: 0.75rem; opacity: 0.9;">
+                        Convert Markdown to Word, PDF, or HTML
+                    </small>
+                </div>
+            </a>
+            
+            <!-- Dropdown Menu -->
+            <div class="dropdown ms-auto">
+                <button class="btn btn-outline-light dropdown-toggle" type="button" @onclick="ToggleDropdown">
+                    <i class="bi bi-list"></i> Menu
+                </button>
+                @if (isDropdownOpen)
+                {
+                    <ul class="dropdown-menu dropdown-menu-end show" style="position: absolute; right: 0;">
+                        <li>
+                            <a class="dropdown-item" href="" @onclick="NavigateToConverter" @onclick:preventDefault>
+                                <i class="bi bi-file-earmark-arrow-down"></i> Converter
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="svg-extractor" @onclick="NavigateToDiagramExtractor" @onclick:preventDefault>
+                                <i class="bi bi-diagram-3"></i> Diagram Extractor
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item" @onclick="ShowAbout">
+                                <i class="bi bi-info-circle"></i> About
+                            </button>
+                        </li>
+                    </ul>
+                }</div>
         </div>
+    </nav>
 
-        <article class="content px-4">
+    <!-- Main Content -->
+    <main>
+        <article class="content px-4 py-4">
             @Body
         </article>
     </main>
 </div>
+
+@code {
+    private bool isDropdownOpen = false;
+
+    private void ToggleDropdown()
+    {
+        isDropdownOpen = !isDropdownOpen;
+    }
+
+    private void NavigateToConverter()
+    {
+        isDropdownOpen = false;
+        Navigation.NavigateTo("/");
+    }
+
+    private void NavigateToDiagramExtractor()
+    {
+        isDropdownOpen = false;
+        Navigation.NavigateTo("/svg-extractor");
+    }
+
+    private void ShowAbout()
+    {
+        isDropdownOpen = false;
+        AppState.ShowAboutModal();
+    }
+}

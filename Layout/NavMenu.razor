@@ -1,6 +1,5 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">MDConverter</a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -11,7 +10,7 @@
     <nav class="nav flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Full Converter
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Converter
             </NavLink>
         </div>
         <div class="nav-item px-3">
@@ -19,8 +18,16 @@
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Diagram Extractor
             </NavLink>
         </div>
+        <div class="nav-item px-3">
+            <button class="nav-link btn btn-link text-start w-100" @onclick="ShowAboutModal">
+                <span class="bi bi-info-circle-nav-menu" aria-hidden="true"></span> About
+            </button>
+        </div>
     </nav>
 </div>
+
+@using MDConverter.Services
+@inject AppState AppState
 
 @code {
     private bool collapseNavMenu = true;
@@ -30,5 +37,10 @@
     private void ToggleNavMenu()
     {
         collapseNavMenu = !collapseNavMenu;
+    }
+
+    private void ShowAboutModal()
+    {
+        AppState.ShowAboutModal();
     }
 }

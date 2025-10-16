@@ -6,7 +6,11 @@
 @inject DocxConverter DocxConverter
 @inject PdfConverter PdfConverter
 @inject MermaidService MermaidService
+@inject PandocService PandocService
+@inject SvgHandler SvgHandler
+@inject AppState AppState
 @inject IJSRuntime JSRuntime
+@implements IDisposable
 
 <PageTitle>MD Converter - AI Agent Document Export</PageTitle>
 
@@ -14,12 +18,6 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h1 class="h3 mb-0">
-                        <i class="bi bi-file-earmark-text"></i> Markdown Document Converter
-                    </h1>
-                    <p class="mb-0 small">Convert Markdown to Word, PDF, or HTML - Mermaid diagrams preserved!</p>
-                </div>
                 <div class="card-body">
                     <!-- File Upload Section -->
                     <div class="mb-4">
@@ -47,6 +45,122 @@ graph TD
 
 Write your **markdown** content here...">
                         </textarea>
+                    </div>
+
+                    <!-- Conversion Mode Selector -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Conversion Mode</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="conversionMode" id="modePandoc" 
+                                   checked="@(conversionMode == "pandoc")" 
+                                   @onchange="@(() => conversionMode = "pandoc")" />
+                            <label class="btn btn-outline-primary" for="modePandoc">
+                                <i class="bi bi-stars"></i> Pandoc WASM (Recommended)
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="conversionMode" id="modeCustom" 
+                                   checked="@(conversionMode == "custom")" 
+                                   @onchange="@(() => conversionMode = "custom")" />
+                            <label class="btn btn-outline-secondary" for="modeCustom">
+                                <i class="bi bi-gear"></i> Custom Converter
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            @if (conversionMode == "pandoc")
+                            {
+                                <span>✨ Real Pandoc compiled to WebAssembly - production quality output!</span>
+                            }
+                            else
+                            {
+                                <span>🔧 Uses our custom .NET DOCX generator</span>
+                            }
+                        </small>
+                    </div>
+
+                    <!-- Output Format Selector -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Output Format</label>
+                        
+                        <!-- Document Formats -->
+                        <div class="mb-2">
+                            <small class="text-muted fw-semibold">📄 Documents</small>
+                        </div>
+                        <div class="btn-group w-100 mb-2" role="group">
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatDocx" 
+                                   checked="@(outputFormat == "docx")" 
+                                   @onchange="@(() => outputFormat = "docx")" />
+                            <label class="btn btn-outline-success" for="formatDocx">
+                                <i class="bi bi-file-earmark-word"></i> Word
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatPdf" 
+                                   checked="@(outputFormat == "pdf")" 
+                                   @onchange="@(() => outputFormat = "pdf")" />
+                            <label class="btn btn-outline-danger" for="formatPdf">
+                                <i class="bi bi-file-earmark-pdf"></i> PDF
+                            </label>
+
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatHtml" 
+                                   checked="@(outputFormat == "html")" 
+                                   @onchange="@(() => outputFormat = "html")" />
+                            <label class="btn btn-outline-info" for="formatHtml">
+                                <i class="bi bi-filetype-html"></i> HTML
+                            </label>
+                        </div>
+                        
+                        <!-- Presentation Formats -->
+                        <div class="mb-2">
+                            <small class="text-muted fw-semibold">🎬 Presentations</small>
+                        </div>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatPptx" 
+                                   checked="@(outputFormat == "pptx")" 
+                                   @onchange="@(() => outputFormat = "pptx")" />
+                            <label class="btn btn-outline-warning" for="formatPptx">
+                                <i class="bi bi-file-earmark-slides"></i> PowerPoint
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatBeamer" 
+                                   checked="@(outputFormat == "beamer")" 
+                                   @onchange="@(() => outputFormat = "beamer")" />
+                            <label class="btn btn-outline-secondary" for="formatBeamer">
+                                <i class="bi bi-file-earmark-text"></i> Beamer
+                            </label>
+
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatReveal" 
+                                   checked="@(outputFormat == "revealjs")" 
+                                   @onchange="@(() => outputFormat = "revealjs")" />
+                            <label class="btn btn-outline-primary" for="formatReveal">
+                                <i class="bi bi-display"></i> Reveal.js
+                            </label>
+                        </div>
+                        
+                        <small class="text-muted">
+                            @if (outputFormat == "pdf")
+                            {
+                                <span>📄 PDF generated using browser print function</span>
+                            }
+                            else if (outputFormat == "html")
+                            {
+                                <span>🌐 Standalone HTML with embedded images</span>
+                            }
+                            else if (outputFormat == "docx")
+                            {
+                                <span>📝 Microsoft Word document format</span>
+                            }
+                            else if (outputFormat == "pptx")
+                            {
+                                <span>🎬 PowerPoint presentation - each heading becomes a slide</span>
+                            }
+                            else if (outputFormat == "beamer")
+                            {
+                                <span>🎓 LaTeX Beamer presentation (academic slides)</span>
+                            }
+                            else if (outputFormat == "revealjs")
+                            {
+                                <span>💻 Interactive HTML presentation with Reveal.js</span>
+                            }
+                        </small>
                     </div>
 
                     <!-- Convert Button -->
@@ -138,8 +252,9 @@ Write your **markdown** content here...">
                 <div class="card-body">
                     <h5 class="card-title">Features</h5>
                     <ul class="mb-0">
-                        <li>✅ Convert Markdown to Word (DOCX), PDF, or HTML</li>
+                        <li>✅ Convert Markdown to Word (DOCX), PDF, HTML, or presentations (PPTX, Beamer, Reveal.js)</li>
                         <li>✅ Preserve Mermaid diagrams in all formats</li>
+                        <li>✅ Create presentations from markdown - each heading becomes a slide</li>
                         <li>✅ Support for tables, lists, code blocks, and formatting</li>
                         <li>✅ Runs entirely in your browser (WASM-powered)</li>
                         <li>✅ AI Agent friendly - paste or upload content</li>
@@ -150,6 +265,164 @@ Write your **markdown** content here...">
         </div>
     </div>
 </div>
+
+<!-- About Modal -->
+@if (showAboutModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle-fill"></i> About MD Converter
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="HideAboutModal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Introduction -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary">
+                            <i class="bi bi-rocket-takeoff"></i> What is MD Converter?
+                        </h6>
+                        <p>
+                            A powerful, browser-based Markdown document converter that transforms your Markdown files 
+                            into professional Word documents (DOCX), PDFs, or HTML while preserving Mermaid diagrams 
+                            and complex formatting.
+                        </p>
+                        <p class="text-muted small mb-0">
+                            <i class="bi bi-shield-check"></i> 
+                            100% client-side processing - your documents never leave your browser!
+                        </p>
+                    </div>
+
+                    <!-- How to Use -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary">
+                            <i class="bi bi-book"></i> How to Use
+                        </h6>
+                        <ol>
+                            <li class="mb-2">
+                                <strong>Input Your Content:</strong> Upload a .md file or paste your Markdown content
+                            </li>
+                            <li class="mb-2">
+                                <strong>Choose Conversion Mode:</strong>
+                                <ul>
+                                    <li><span class="badge bg-primary">Pandoc WASM</span> - Recommended for professional quality output</li>
+                                    <li><span class="badge bg-secondary">Custom Converter</span> - Alternative .NET-based converter</li>
+                                </ul>
+                            </li>
+                            <li class="mb-2">
+                                <strong>Select Output Format:</strong>
+                                <ul>
+                                    <li><strong>Documents:</strong></li>
+                                    <ul>
+                                        <li><i class="bi bi-file-earmark-word text-success"></i> <strong>DOCX</strong> - Microsoft Word document</li>
+                                        <li><i class="bi bi-file-earmark-pdf text-danger"></i> <strong>PDF</strong> - Opens print dialog for Save as PDF</li>
+                                        <li><i class="bi bi-filetype-html text-info"></i> <strong>HTML</strong> - Standalone web page</li>
+                                    </ul>
+                                    <li><strong>Presentations:</strong></li>
+                                    <ul>
+                                        <li><i class="bi bi-file-earmark-slides text-warning"></i> <strong>PowerPoint (PPTX)</strong> - Each heading becomes a slide</li>
+                                        <li><i class="bi bi-file-earmark-text text-secondary"></i> <strong>Beamer</strong> - LaTeX presentation slides</li>
+                                        <li><i class="bi bi-display text-primary"></i> <strong>Reveal.js</strong> - Interactive HTML slides</li>
+                                    </ul>
+                                </ul>
+                            </li>
+                            <li class="mb-2">
+                                <strong>Click Convert & Download</strong> - Your document will be generated!
+                            </li>
+                        </ol>
+                    </div>
+
+                    <!-- Features -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary">
+                            <i class="bi bi-star-fill"></i> Key Features
+                        </h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Mermaid diagram support</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> SVG & image handling</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Tables & lists</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Code syntax highlighting</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Presentation generation</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="list-unstyled">
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> WebAssembly powered</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> No server required</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> Privacy-focused</li>
+                                    <li><i class="bi bi-check-circle-fill text-success"></i> AI Agent friendly</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technology Stack -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary">
+                            <i class="bi bi-gear-fill"></i> Technology Stack
+                        </h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary">Blazor WebAssembly</span>
+                            <span class="badge bg-success">.NET 9</span>
+                            <span class="badge bg-info">Pandoc WASM</span>
+                            <span class="badge bg-warning text-dark">Mermaid.js</span>
+                            <span class="badge bg-secondary">Markdig</span>
+                            <span class="badge bg-danger">DocumentFormat.OpenXml</span>
+                        </div>
+                    </div>
+
+                    <!-- Creator Info -->
+                    <div class="mb-4">
+                        <h6 class="fw-bold text-primary">
+                            <i class="bi bi-person-circle"></i> Created By
+                        </h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <p class="mb-2">
+                                    <strong>Lewis Pobjoy</strong>
+                                </p>
+                                <p class="mb-2 text-muted">
+                                    Built with modern web technologies to solve the challenge of converting 
+                                    AI-generated Markdown content with diagrams into professional document formats.
+                                </p>
+                                <div class="d-flex gap-2">
+                                    <a href="https://github.com/lpobjoy/MD-conversion-tool" target="_blank" class="btn btn-sm btn-outline-dark">
+                                        <i class="bi bi-github"></i> View on GitHub
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tips -->
+                    <div class="alert alert-info mb-0">
+                        <h6 class="alert-heading">
+                            <i class="bi bi-lightbulb-fill"></i> Pro Tips
+                        </h6>
+                        <ul class="mb-0 small">
+                            <li>Use Mermaid diagrams for flowcharts, sequence diagrams, and more</li>
+                            <li>DOCX format is best for editing in Microsoft Word</li>
+                            <li>PDF format uses your browser's print dialog - choose "Save as PDF"</li>
+                            <li>HTML format preserves vector graphics for best quality</li>
+                            <li><strong>Presentations:</strong> Use # for slide titles and ## for slide content</li>
+                            <li>PPTX works in PowerPoint/Google Slides, Reveal.js for interactive web presentations</li>
+                            <li>All processing happens in your browser - no data is sent to servers</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" @onclick="HideAboutModal">
+                        <i class="bi bi-check-circle"></i> Got it!
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     private string markdownContent = @"# Sample Markdown Document
@@ -190,6 +463,8 @@ public class Example {
 ";
 
     private ExportFormat selectedFormat = ExportFormat.Pandoc; // Default to Pandoc workflow
+    private string conversionMode = "pandoc"; // "pandoc" or "custom"
+    private string outputFormat = "docx"; // "docx", "pdf", or "html"
     private string pandocCommand = "";
     private string fileName = "document";
     private bool isConverting = false;
@@ -197,6 +472,7 @@ public class Example {
     private bool statusSuccess = false;
     private bool showPreview = false;
     private string previewHtml = "";
+    private bool showAboutModal = false;
 
     // Note: Mermaid is now auto-initialized in index.html using ESM import
     // No need for OnAfterRenderAsync initialization
@@ -234,31 +510,145 @@ public class Example {
         }
 
         isConverting = true;
-        statusMessage = "Step 1/5: Extracting Mermaid diagrams...";
+        statusMessage = "Step 1/6: Analyzing markdown content...";
         statusSuccess = true;
         StateHasChanged();
 
         try
         {
-            // Step 1: Extract Mermaid diagrams from markdown (don't convert yet)
+            // Step 1a: Extract Mermaid diagrams from markdown (don't convert yet)
             var diagrams = MarkdownParser.ExtractMermaidDiagrams(markdownContent);
+            
+            // Step 1b: Extract SVG references (external files or embedded SVG)
+            statusMessage = "Step 1/6: Extracting SVG references...";
+            StateHasChanged();
+            await Task.Delay(50);
+            
+            var svgRefs = await SvgHandler.ExtractSvgReferencesAsync(markdownContent);
+            Console.WriteLine($"Found {svgRefs.Count} SVG reference(s) in markdown");
+            
+            // Determine if we need PNG conversion based on output format
+            // DOCX, PDF, PPTX, and Beamer need PNG; HTML and Reveal.js can use SVG
+            bool needsPng = (outputFormat == "docx" || outputFormat == "pdf" || outputFormat == "pptx" || outputFormat == "beamer");
+            string svgProcessedMarkdown = markdownContent;
             
             if (!diagrams.Any())
             {
-                // No diagrams, just convert the markdown directly
-                statusMessage = "No Mermaid diagrams found. Converting markdown...";
+                // No diagrams, but still need to handle SVG refs and respect output format
+                statusMessage = "No Mermaid diagrams found. Processing content...";
                 StateHasChanged();
                 await Task.Delay(100);
                 
-                var html = Markdig.Markdown.ToHtml(markdownContent);
-                await GenerateOutputFile(html, new List<MermaidDiagram>());
+                // Step 4: Process SVG references if any exist
+                if (svgRefs.Any())
+                {
+                    statusMessage = $"Processing {svgRefs.Count} SVG reference(s)...";
+                    StateHasChanged();
+                    await Task.Delay(100);
+                    
+                    svgProcessedMarkdown = await SvgHandler.ProcessSvgReferencesAsync(
+                        markdownContent, 
+                        svgRefs, 
+                        convertToPng: needsPng
+                    );
+                }
+                
+                // Generate output based on selected format
+                if (conversionMode == "pandoc")
+                {
+                    statusMessage = $"Converting with Pandoc WASM to {outputFormat.ToUpper()}...";
+                    StateHasChanged();
+                    await Task.Delay(100);
+                    
+                    try
+                    {
+                        byte[]? outputBytes = null;
+                        string mimeType = "";
+                        string fileExtension = "";
+                        
+                        if (outputFormat == "docx")
+                        {
+                            outputBytes = await PandocService.ConvertMarkdownToDocxAsync(svgProcessedMarkdown);
+                            mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                            fileExtension = "docx";
+                        }
+                        else if (outputFormat == "pdf")
+                        {
+                            outputBytes = await PandocService.ConvertMarkdownToPdfAsync(svgProcessedMarkdown);
+                            if (outputBytes != null)
+                            {
+                                var htmlContent = System.Text.Encoding.UTF8.GetString(outputBytes);
+                                await JSRuntime.InvokeVoidAsync("openHtmlForPrint", htmlContent, $"{fileName}.pdf");
+                                
+                                statusMessage = "✅ PDF preview opened! Use browser Print → Save as PDF";
+                                statusSuccess = true;
+                            }
+                            else
+                            {
+                                statusMessage = "❌ PDF generation failed - no output from Pandoc";
+                                statusSuccess = false;
+                            }
+                            return; // Don't trigger download
+                        }
+                        else if (outputFormat == "html")
+                        {
+                            outputBytes = await PandocService.ConvertMarkdownToPdfAsync(svgProcessedMarkdown);
+                            mimeType = "text/html";
+                            fileExtension = "html";
+                        }
+                        else if (outputFormat == "pptx")
+                        {
+                            outputBytes = await PandocService.ConvertMarkdownToPptxAsync(svgProcessedMarkdown);
+                            mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                            fileExtension = "pptx";
+                        }
+                        else if (outputFormat == "beamer")
+                        {
+                            outputBytes = await PandocService.ConvertMarkdownToBeamerAsync(svgProcessedMarkdown);
+                            mimeType = "application/x-latex";
+                            fileExtension = "tex";
+                        }
+                        else if (outputFormat == "revealjs")
+                        {
+                            outputBytes = await PandocService.ConvertMarkdownToRevealJsAsync(svgProcessedMarkdown);
+                            mimeType = "text/html";
+                            fileExtension = "html";
+                        }
+                        
+                        if (outputBytes != null && outputBytes.Length > 0)
+                        {
+                            var base64 = Convert.ToBase64String(outputBytes);
+                            await JSRuntime.InvokeVoidAsync("downloadFile", $"{fileName}.{fileExtension}", mimeType, base64);
+                            
+                            statusMessage = $"✅ Successfully converted to {outputFormat.ToUpper()} using Pandoc WASM!";
+                            statusSuccess = true;
+                        }
+                        else
+                        {
+                            statusMessage = "❌ Pandoc WASM returned empty result";
+                            statusSuccess = false;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        statusMessage = $"❌ Pandoc WASM error: {ex.Message}";
+                        statusSuccess = false;
+                    }
+                }
+                else
+                {
+                    // Custom converter mode
+                    var html = Markdig.Markdown.ToHtml(svgProcessedMarkdown);
+                    await GenerateOutputFile(html, new List<MermaidDiagram>());
+                }
+                
                 return;
             }
 
             Console.WriteLine($"Found {diagrams.Count} Mermaid diagrams");
 
             // Step 2: Render Mermaid diagrams to SVG
-            statusMessage = $"Step 2/5: Rendering {diagrams.Count} diagram(s) to SVG...";
+            statusMessage = $"Step 2/6: Rendering {diagrams.Count} Mermaid diagram(s) to SVG...";
             StateHasChanged();
             await Task.Delay(100);
 
@@ -277,14 +667,18 @@ public class Example {
                 }
             }
             
-            // Step 3: Convert to PNG (for all formats except HTML)
-            if (selectedFormat == ExportFormat.Html)
+            // Step 3: Convert Mermaid diagrams to PNG (for DOCX/PDF) or keep as SVG (for HTML)
+            // needsPng already declared above
+            
+            if (!needsPng && outputFormat == "html")
             {
-                statusMessage = $"Step 3/5: Keeping diagrams as SVG for web...";
+                statusMessage = $"Step 3/6: Keeping Mermaid diagrams as SVG for web...";
+                StateHasChanged();
+                await Task.Delay(50);
             }
             else
             {
-                statusMessage = $"Step 3/5: Converting diagrams to high-quality PNG...";
+                statusMessage = $"Step 3/6: Converting Mermaid diagrams to high-quality PNG...";
                 StateHasChanged();
                 await Task.Delay(100);
                 
@@ -297,25 +691,42 @@ public class Example {
                         if (!string.IsNullOrEmpty(pngBase64))
                         {
                             diagram.RenderedPng = pngBase64;
-                            Console.WriteLine($"Converted diagram to PNG successfully");
+                            Console.WriteLine($"Converted Mermaid diagram to PNG successfully");
                         }
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error converting to PNG: {ex.Message}");
+                        Console.WriteLine($"Error converting Mermaid to PNG: {ex.Message}");
                     }
                 }
             }
             
-            // Step 4: Handle "Files" and "Pandoc" formats - process in memory
+            // Step 4: Process SVG references (convert to PNG for DOCX/PDF, embed for HTML)
+            statusMessage = $"Step 4/6: Processing {svgRefs.Count} SVG reference(s)...";
+            StateHasChanged();
+            await Task.Delay(100);
+            
+            // svgProcessedMarkdown already declared above, update it if there are SVG refs
+            if (svgRefs.Any())
+            {
+                svgProcessedMarkdown = await SvgHandler.ProcessSvgReferencesAsync(
+                    markdownContent, 
+                    svgRefs, 
+                    convertToPng: needsPng
+                );
+                Console.WriteLine($"✅ Processed {svgRefs.Count} SVG references");
+            }
+            
+            // Step 5: Handle "Files" and "Pandoc" formats - process in memory
             if (selectedFormat == ExportFormat.Files || selectedFormat == ExportFormat.Pandoc)
             {
-                // Step 4: Update markdown in memory (no download)
-                statusMessage = $"Step 4/5: Updating markdown with image references...";
+                // Step 5: Update markdown in memory (no download)
+                statusMessage = $"Step 5/6: Updating markdown with image references...";
                 StateHasChanged();
                 await Task.Delay(100);
                 
-                string updatedMarkdown = markdownContent;
+                // Start with SVG-processed markdown (already has SVG refs as data URIs)
+                string updatedMarkdown = svgProcessedMarkdown;
                 Console.WriteLine($"Original markdown length: {markdownContent.Length}");
                 
                 for (int i = 0; i < diagrams.Count; i++)
@@ -359,7 +770,7 @@ public class Example {
                 // Generate DOCX if Pandoc format selected
                 if (selectedFormat == ExportFormat.Pandoc)
                 {
-                    statusMessage = $"Step 5/5: Generating Word document...";
+                    statusMessage = $"Step 6/6: Generating document...";
                     StateHasChanged();
                     await Task.Delay(100);
                     
@@ -399,8 +810,134 @@ public class Example {
                     
                     Console.WriteLine($"Final HTML still contains mermaid-diagram: {finalHtml.Contains("mermaid-diagram")}");
                     
-                    // Generate DOCX
-                    var docxResult = await DocxConverter.ConvertToDocx(finalHtml, diagrams, $"{fileName}.docx");
+                    // Generate DOCX based on selected mode
+                    ConversionResult docxResult;
+                    
+                    if (conversionMode == "pandoc")
+                    {
+                        // Use Pandoc WASM for conversion
+                        statusMessage = $"Step 6/6: Converting with Pandoc WASM to {outputFormat.ToUpper()}...";
+                        StateHasChanged();
+                        await Task.Delay(100);
+                        
+                        try
+                        {
+                            // Replace PNG file references with data URIs in the markdown
+                            string markdownWithDataUris = updatedMarkdown;
+                            for (int i = 0; i < diagrams.Count; i++)
+                            {
+                                var diagram = diagrams[i];
+                                var imagePlaceholder = $"mermaid-diagram-{i + 1}.png";
+                                
+                                if (!string.IsNullOrEmpty(diagram.RenderedPng))
+                                {
+                                    var dataUri = $"data:image/png;base64,{diagram.RenderedPng}";
+                                    markdownWithDataUris = markdownWithDataUris.Replace(imagePlaceholder, dataUri);
+                                    Console.WriteLine($"✅ Embedded PNG data URI for diagram {i + 1}");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"⚠️ No PNG data for diagram {i + 1}");
+                                }
+                            }
+                            
+                            byte[]? outputBytes = null;
+                            string mimeType = "";
+                            string fileExtension = "";
+                            
+                            if (outputFormat == "docx")
+                            {
+                                outputBytes = await PandocService.ConvertMarkdownToDocxAsync(markdownWithDataUris);
+                                mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                                fileExtension = "docx";
+                            }
+                            else if (outputFormat == "pdf")
+                            {
+                                // Generate HTML and use browser print
+                                outputBytes = await PandocService.ConvertMarkdownToPdfAsync(markdownWithDataUris);
+                                mimeType = "text/html";
+                                fileExtension = "html";
+                            }
+                            else if (outputFormat == "html")
+                            {
+                                outputBytes = await PandocService.ConvertMarkdownToPdfAsync(markdownWithDataUris); // Uses same HTML generation
+                                mimeType = "text/html";
+                                fileExtension = "html";
+                            }
+                            else if (outputFormat == "pptx")
+                            {
+                                outputBytes = await PandocService.ConvertMarkdownToPptxAsync(markdownWithDataUris);
+                                mimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                                fileExtension = "pptx";
+                            }
+                            else if (outputFormat == "beamer")
+                            {
+                                outputBytes = await PandocService.ConvertMarkdownToBeamerAsync(markdownWithDataUris);
+                                mimeType = "application/x-latex";
+                                fileExtension = "tex";
+                            }
+                            else if (outputFormat == "revealjs")
+                            {
+                                outputBytes = await PandocService.ConvertMarkdownToRevealJsAsync(markdownWithDataUris);
+                                mimeType = "text/html";
+                                fileExtension = "html";
+                            }
+                            
+                            if (outputBytes != null && outputBytes.Length > 0)
+                            {
+                                // For PDF format, open HTML in new tab for printing
+                                if (outputFormat == "pdf")
+                                {
+                                    var htmlContent = System.Text.Encoding.UTF8.GetString(outputBytes);
+                                    await JSRuntime.InvokeVoidAsync("openHtmlForPrint", htmlContent, $"{fileName}.pdf");
+                                    
+                                    docxResult = new ConversionResult
+                                    {
+                                        Success = true,
+                                        FileName = $"{fileName}.pdf",
+                                        MimeType = "application/pdf",
+                                        FileData = Array.Empty<byte>() // No download, using print dialog
+                                    };
+                                    
+                                    statusMessage = "✅ PDF preview opened! Use browser Print → Save as PDF";
+                                    statusSuccess = true;
+                                    return; // Don't trigger download
+                                }
+                                else
+                                {
+                                    docxResult = new ConversionResult
+                                    {
+                                        Success = true,
+                                        FileName = $"{fileName}.{fileExtension}",
+                                        MimeType = mimeType,
+                                        FileData = outputBytes
+                                    };
+                                }
+                            }
+                            else
+                            {
+                                docxResult = new ConversionResult
+                                {
+                                    Success = false,
+                                    ErrorMessage = "Pandoc WASM returned empty result"
+                                };
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"❌ Pandoc WASM conversion failed: {ex.Message}");
+                            docxResult = new ConversionResult
+                            {
+                                Success = false,
+                                ErrorMessage = $"Pandoc WASM error: {ex.Message}"
+                            };
+                        }
+                    }
+                    else
+                    {
+                        // Use custom DocxConverter
+                        docxResult = await DocxConverter.ConvertToDocx(finalHtml, diagrams, $"{fileName}.docx");
+                    }
                     
                     if (docxResult.Success && docxResult.FileData != null)
                     {
@@ -408,7 +945,8 @@ public class Example {
                         await JSRuntime.InvokeVoidAsync("downloadFile", docxResult.FileName, docxResult.MimeType, docxBase64);
                         
                         pandocCommand = ""; // Clear command since we generated it directly
-                        statusMessage = $"✅ SUCCESS! Word document generated with {diagrams.Count} embedded diagram(s)!";
+                        var modeLabel = conversionMode == "pandoc" ? "Pandoc WASM" : "Custom Converter";
+                        statusMessage = $"✅ SUCCESS! Word document generated with {diagrams.Count} embedded diagram(s) using {modeLabel}!";
                     }
                     else
                     {
@@ -592,5 +1130,26 @@ public class Example {
             FileName = fileName,
             MimeType = "text/html"
         });
+    }
+
+    protected override void OnInitialized()
+    {
+        AppState.OnAboutModalRequested += ShowAboutModal;
+    }
+
+    private void ShowAboutModal()
+    {
+        showAboutModal = true;
+        StateHasChanged();
+    }
+
+    private void HideAboutModal()
+    {
+        showAboutModal = false;
+    }
+
+    public void Dispose()
+    {
+        AppState.OnAboutModalRequested -= ShowAboutModal;
     }
 }

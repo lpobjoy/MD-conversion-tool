@@ -168,3 +168,72 @@ code {
 .card-header {
     border-bottom: 2px solid rgba(0, 0, 0, 0.125);
 }
+
+/* No-sidebar layout */
+.page-no-sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.page-no-sidebar main {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.page-no-sidebar .content {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Navbar styling */
+.navbar-brand {
+    font-weight: 600;
+    font-size: 1.1rem;
+    line-height: 1.3;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.navbar-brand:hover {
+    opacity: 0.9;
+}
+
+.navbar .dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    min-width: 200px;
+}
+
+.dropdown-item {
+    cursor: pointer;
+    display: block;
+    width: 100%;
+    padding: 0.5rem 1rem;
+    clear: both;
+    font-weight: 400;
+    color: #212529;
+    text-align: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    background-color: transparent;
+    border: 0;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.dropdown-item i {
+    width: 20px;
+    margin-right: 8px;
+}
+
+.dropdown-divider {
+    height: 0;
+    margin: 0.5rem 0;
+    overflow: hidden;
+    border-top: 1px solid #e9ecef;
+}

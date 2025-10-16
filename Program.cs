@@ -14,5 +14,8 @@ builder.Services.AddScoped<MarkdownParser>();
 builder.Services.AddScoped<DocxConverter>();
 builder.Services.AddScoped<PdfConverter>();
 builder.Services.AddScoped<MermaidService>();
+builder.Services.AddScoped<PandocService>();
+builder.Services.AddScoped<SvgHandler>();
+builder.Services.AddSingleton<AppState>();
 
 await builder.Build().RunAsync();

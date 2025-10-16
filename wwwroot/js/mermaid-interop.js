@@ -512,3 +512,67 @@ window.renderMermaidOriginal = async function(code, elementId) {
         throw new Error(`Failed to render Mermaid diagram: ${error.message}`);
     }
 };
+
+// Open HTML content in a new window for printing to PDF
+window.openHtmlForPrint = function(htmlContent, suggestedFilename) {
+    try {
+        // Create a new window for printing
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        
+        if (!printWindow) {
+            alert('Please allow pop-ups to generate PDF');
+            return;
+        }
+        
+        // Write the HTML content with print styles
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <title>${suggestedFilename || 'Document'}</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        max-width: 800px;
+                        margin: 20px auto;
+                        padding: 20px;
+                    }
+                    img {
+                        max-width: 100%;
+                        height: auto;
+                    }
+                    @media print {
+                        body {
+                            margin: 0;
+                            padding: 20px;
+                        }
+                    }
+                    @page {
+                        margin: 1in;
+                    }
+                </style>
+            </head>
+            <body>
+                ${htmlContent}
+                <script>
+                    // Auto-trigger print dialog after page loads
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 500);
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        
+        printWindow.document.close();
+        
+        console.log('✅ Print window opened for PDF generation');
+    } catch (error) {
+        console.error('❌ Error opening print window:', error);
+        alert('Failed to open print window: ' + error.message);
+    }
+};

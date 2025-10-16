@@ -1,0 +1,856 @@
+@page "/svg-extractor"
+@using MDConverter.Services
+@using MDConverter.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject MarkdownParser MarkdownParser
+@inject MermaidService MermaidService
+@inject DocxConverter DocxConverter
+@inject IJSRuntime JSRuntime
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    @page "/svg-extractor"
+@inject IJSRuntime JSRuntime
+@inject MermaidService MermaidService
+@inject MarkdownParser MarkdownParser
+
+<PageTitle>PNG Extractor</PageTitle>
+
+<h1>🎨 Mermaid PNG Extractor</h1>
+
+<div class="alert alert-info">
+    <strong>📝 How it works:</strong>
+    <ol>
+        <li>Upload your Markdown file</li>
+        <li>Click "Extract & Download PNG Files"</li>
+        <li>All Mermaid diagrams are automatically converted to PNG and downloaded</li>
+    </ol>
+</div>
+                </div>
+                <div class="card-body">
+                    <!-- File Upload Section -->
+                    <div class="mb-4">
+                        <label for="fileInput" class="form-label fw-bold">Upload Markdown File</label>
+                        <input type="file" id="fileInput" @ref="fileInputElement" class="form-control" accept=".md,.markdown" @onchange="HandleFileSelected" />
+                        <small class="text-muted">Or paste your markdown content below</small>
+                    </div>
+
+                    <!-- Markdown Input Section -->
+                    <div class="mb-4">
+                        <label for="markdownInput" class="form-label fw-bold">Markdown Content</label>
+                        <textarea @bind="markdownContent" 
+                                  id="markdownInput"
+                                  class="form-control font-monospace" 
+                                  rows="15" 
+                                  placeholder="# Your Markdown Here
+
+```mermaid
+graph TD
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+```
+
+```mermaid
+sequenceDiagram
+    Alice->>Bob: Hello Bob!
+    Bob-->>Alice: Hello Alice!
+```
+
+Paste your markdown with Mermaid diagrams here...">
+                        </textarea>
+                    </div>
+
+                    <!-- SVG Path Configuration -->
+                    <div class="mb-4">
+                        <label for="svgPath" class="form-label fw-bold">SVG Files Path (optional)</label>
+                        <input @bind="svgFolderPath" type="text" id="svgPath" class="form-control font-monospace" placeholder="./" />
+                        <small class="text-muted">
+                            Leave as <code>./</code> for same folder, or use <code>./diagrams/</code>, <code>./images/</code>, etc.
+                        </small>
+                    </div>
+
+                    <!-- Output Format Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Output Format</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatFiles" 
+                                   checked="@(outputFormat == OutputFormat.Files)"
+                                   @onchange="() => outputFormat = OutputFormat.Files" />
+                            <label class="btn btn-outline-primary" for="formatFiles">
+                                <i class="bi bi-files"></i> SVG Files + Markdown
+                            </label>
+
+                            <input type="radio" class="btn-check" name="outputFormat" id="formatWord"
+                                   checked="@(outputFormat == OutputFormat.WordDocument)"
+                                   @onchange="() => outputFormat = OutputFormat.WordDocument" />
+                            <label class="btn btn-outline-success" for="formatWord">
+                                <i class="bi bi-file-word"></i> Word Document (Direct!)
+                            </label>
+                        </div>
+                        <small class="text-muted">
+                            @if (outputFormat == OutputFormat.Files)
+                            {
+                                <text>Downloads SVG files + markdown for pandoc conversion</text>
+                            }
+                            else
+                            {
+                                <text>🔥 Generates .docx directly - NO pandoc needed!</text>
+                            }
+                        </small>
+                    </div>
+
+                    <!-- Automated Full Workflow Button -->
+                    <div class="d-grid gap-2 mb-4">
+                        <button @onclick="RunCompleteWorkflow" 
+                                class="btn btn-primary btn-lg" 
+                                disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>@workflowStatus</span>
+                            }
+                            else
+                            {
+                                @if (outputFormat == OutputFormat.WordDocument)
+                                {
+                                    <i class="bi bi-magic"></i>
+                                    <span>� One-Click: Extract & Generate Word Document!</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-magic"></i>
+                                    <span>🚀 One-Click: Extract & Export All Files</span>
+                                }
+                            }
+                        </button>
+                    </div>
+
+                    <!-- Manual Steps (Advanced) -->
+                    <details class="mb-4">
+                        <summary class="btn btn-link text-decoration-none">
+                            <i class="bi bi-gear"></i> Manual Mode (Advanced)
+                        </summary>
+                        <div class="mt-3">
+                            <!-- Extract Button -->
+                            <div class="d-grid gap-2 mb-3">
+                                <button @onclick="ExtractSvgFiles" 
+                                        class="btn btn-outline-success" 
+                                        disabled="@isExtracting">
+                                    @if (isExtracting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span>Extracting & Downloading...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-download"></i>
+                                        <span>Step 1: Extract & Download SVG Files Only</span>
+                                    }
+                                </button>
+                            </div>
+
+                            <!-- Enhanced Workflow Button -->
+                            @if (extractedDiagrams.Any())
+                            {
+                                <div class="d-grid gap-2">
+                                    <button @onclick="UpdateMarkdownAndExport" 
+                                            class="btn btn-outline-primary" 
+                                            disabled="@isProcessing">
+                                        @if (isProcessing)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                            <span>Processing...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-file-earmark-text"></i>
+                                            <span>Step 2: Update Markdown & Export</span>
+                                        }
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    </details>
+
+                    <!-- Status Messages -->
+                    @if (!string.IsNullOrEmpty(statusMessage))
+                    {
+                        <div class="alert @(statusSuccess ? "alert-success" : "alert-danger")" role="alert">
+                            @statusMessage
+                        </div>
+                    }
+
+                    <!-- Final Instructions -->
+                    @if (workflowComplete)
+                    {
+                        @if (outputFormat == OutputFormat.WordDocument)
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <h5 class="alert-heading"><i class="bi bi-check-circle-fill"></i> 🎉 Word Document Generated!</h5>
+                                <p class="mb-3">
+                                    <strong>Downloaded file:</strong>
+                                </p>
+                                <ul class="mb-3">
+                                    <li><code>output.docx</code> - Complete Word document with @extractedDiagrams.Count embedded SVG diagram(s)</li>
+                                </ul>
+                                <hr>
+                                <h6><i class="bi bi-stars"></i> What's Inside:</h6>
+                                <ul class="mb-0">
+                                    <li>✅ Your full markdown content formatted as a Word document</li>
+                                    <li>✅ All Mermaid diagrams embedded as vector graphics (SVG)</li>
+                                    <li>✅ Perfect colors, styling, and text - exactly as Mermaid renders them</li>
+                                    <li>✅ Scalable graphics - zoom in without pixelation!</li>
+                                    <li>✅ Ready to edit, share, or print</li>
+                                </ul>
+                                <div class="mt-3 p-3 bg-light rounded">
+                                    <h6 class="text-primary"><i class="bi bi-lightbulb"></i> Pro Tip:</h6>
+                                    <p class="mb-0 small">
+                                        <strong>NO pandoc needed!</strong> Just open <code>output.docx</code> and you're done. 
+                                        This tool did everything in your browser - extracted diagrams, rendered SVGs, 
+                                        and generated a native Word document. 🔥
+                                    </p>
+                                </div>
+                                <button type="button" class="btn-close" @onclick="() => workflowComplete = false"></button>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <h5 class="alert-heading"><i class="bi bi-check-circle-fill"></i> ✅ All Files Ready!</h5>
+                                <p class="mb-3">
+                                    <strong>Downloaded @(extractedDiagrams.Count + 1) file(s):</strong>
+                                </p>
+                                <ul class="mb-3">
+                                    @for (int i = 0; i < extractedDiagrams.Count; i++)
+                                    {
+                                        <li><code>mermaid-diagram-@(i + 1).svg</code></li>
+                                    }
+                                    <li><code>document-with-svgs.md</code> (updated markdown)</li>
+                                </ul>
+                                <hr>
+                                <h6><i class="bi bi-terminal"></i> Next Steps:</h6>
+                                <ol class="mb-0">
+                                    <li>Organize your downloads:
+                                        <div class="bg-dark text-white p-2 rounded font-monospace small mt-2">
+                                            mkdir my-document<br/>
+                                            mv ~/Downloads/mermaid-diagram-*.svg my-document/@(string.IsNullOrWhiteSpace(svgFolderPath) || svgFolderPath == "./" ? "" : svgFolderPath)<br/>
+                                            mv ~/Downloads/document-with-svgs.md my-document/document.md
+                                        </div>
+                                    </li>
+                                    <li class="mt-3">Convert to Word with pandoc:
+                                        <div class="bg-dark text-white p-2 rounded font-monospace small mt-2 position-relative">
+                                            cd my-document<br/>
+                                            pandoc document.md -o output.docx
+                                            <button class="btn btn-sm btn-outline-light position-absolute top-0 end-0 m-1" 
+                                                    @onclick="() => CopyToClipboard(pandocCommand)">
+                                                <i class="bi bi-clipboard"></i> Copy
+                                            </button>
+                                        </div>
+                                    </li>
+                                    <li class="mt-3">Open <code>output.docx</code> - Perfect vector diagrams! ✨</li>
+                                </ol>
+                                <button type="button" class="btn-close" @onclick="() => workflowComplete = false"></button>
+                            </div>
+                        }
+                    }
+
+                    <!-- Updated Markdown Output -->
+                    @if (!string.IsNullOrEmpty(updatedMarkdown))
+                    {
+                        <div class="card mb-4">
+                            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-file-earmark-text"></i> Preview: Updated Markdown
+                                </h5>
+                                <button class="btn btn-sm btn-light" @onclick="DownloadUpdatedMarkdown">
+                                    <i class="bi bi-download"></i> Re-download
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <textarea class="form-control font-monospace" rows="10" readonly>@updatedMarkdown</textarea>
+                            </div>
+                        </div>
+                    }
+
+
+
+                    <!-- Results Section -->
+                    @if (extractedDiagrams.Any())
+                    {
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-diagram-3"></i> Extracted Diagrams (@extractedDiagrams.Count)
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    @for (int i = 0; i < extractedDiagrams.Count; i++)
+                                    {
+                                        var diagram = extractedDiagrams[i];
+                                        var index = i;
+                                        
+                                        <div class="col-md-6 col-lg-4 mb-3">
+                                            <div class="card">
+                                                <div class="card-header d-flex justify-content-between align-items-center">
+                                                    <small class="text-muted">Diagram @(index + 1)</small>
+                                                    <button class="btn btn-sm btn-outline-primary" 
+                                                            @onclick="() => DownloadSingleSvg(diagram, index + 1)">
+                                                        <i class="bi bi-download"></i> SVG
+                                                    </button>
+                                                </div>
+                                                <div class="card-body p-2" style="max-height: 200px; overflow: auto;">
+                                                    @if (!string.IsNullOrEmpty(diagram.RenderedSvg))
+                                                    {
+                                                        @((MarkupString)diagram.RenderedSvg)
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="text-muted">SVG not rendered</div>
+                                                    }
+                                                </div>
+                                                <div class="card-footer">
+                                                    <small class="text-muted font-monospace">
+                                                        @(diagram.Code?.Length > 50 ? diagram.Code.Substring(0, 47) + "..." : diagram.Code)
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                                
+                                @if (extractedDiagrams.Count > 1)
+                                {
+                                    <div class="d-grid mt-3">
+                                        <button class="btn btn-primary" @onclick="DownloadAllSvgAsZip">
+                                            <i class="bi bi-file-zip"></i> Download All SVG Files as ZIP
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private enum OutputFormat
+    {
+        Files,
+        WordDocument
+    }
+
+    private OutputFormat outputFormat = OutputFormat.WordDocument;
+    
+    private string markdownContent = @"# Sample Document with Mermaid Diagrams
+
+## Flowchart Example
+```mermaid
+graph LR
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+```
+
+## Sequence Diagram Example
+```mermaid
+sequenceDiagram
+    participant A as Alice
+    participant B as Bob
+    A->>B: Hello Bob!
+    B-->>A: Hello Alice!
+    A->>B: How are you?
+    B-->>A: I'm good, thanks!
+```";
+
+    private bool isExtracting = false;
+    private bool isProcessing = false;
+    private string statusMessage = "";
+    private bool statusSuccess = false;
+    private List<MermaidDiagram> extractedDiagrams = new();
+    private string updatedMarkdown = "";
+    private string svgFolderPath = "./";
+    private bool workflowComplete = false;
+    private string workflowStatus = "Processing...";
+    private string pandocCommand = "pandoc document.md -o output.docx";
+
+    private ElementReference fileInputElement;
+
+    private async Task HandleFileSelected(ChangeEventArgs e)
+    {
+        try
+        {
+            statusMessage = "📁 Reading file...";
+            statusSuccess = true;
+            StateHasChanged();
+
+            // Use JavaScript to read the file content
+            var fileContent = await JSRuntime.InvokeAsync<string>("readFileContent", fileInputElement);
+            
+            if (!string.IsNullOrEmpty(fileContent))
+            {
+                markdownContent = fileContent;
+                statusMessage = $"✅ File loaded successfully! Found {fileContent.Length} characters.";
+                statusSuccess = true;
+            }
+            else
+            {
+                statusMessage = "❌ File appears to be empty or could not be read.";
+                statusSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error reading file: {ex.Message}";
+            statusSuccess = false;
+        }
+        
+        StateHasChanged();
+    }
+
+    private async Task ExtractSvgFiles()
+    {
+        if (string.IsNullOrWhiteSpace(markdownContent))
+        {
+            statusMessage = "Please enter some markdown content first.";
+            statusSuccess = false;
+            return;
+        }
+
+        isExtracting = true;
+        extractedDiagrams.Clear();
+        statusMessage = "Extracting Mermaid diagrams...";
+        statusSuccess = true;
+        StateHasChanged();
+
+        try
+        {
+            // Step 1: Extract Mermaid diagrams from markdown
+            var diagrams = MarkdownParser.ExtractMermaidDiagrams(markdownContent);
+            
+            if (!diagrams.Any())
+            {
+                statusMessage = "❌ No Mermaid diagrams found in the markdown content.";
+                statusSuccess = false;
+                return;
+            }
+
+            statusMessage = $"Found {diagrams.Count} Mermaid diagram(s). Rendering to SVG...";
+            StateHasChanged();
+            await Task.Delay(100); // Allow UI to update
+
+            // Step 2: Render each diagram to SVG (without cleanup to preserve original styling)
+            foreach (var diagram in diagrams)
+            {
+                try
+                {
+                    // Render the original SVG without any modifications
+                    var svgResult = await JSRuntime.InvokeAsync<string>("renderMermaidOriginal", diagram.Code, diagram.Id);
+                    diagram.RenderedSvg = svgResult;
+                    extractedDiagrams.Add(diagram);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error rendering diagram {diagram.Id}: {ex.Message}");
+                }
+            }
+
+            if (extractedDiagrams.Any())
+            {
+                statusMessage = $"✅ Successfully extracted {extractedDiagrams.Count} SVG diagram(s)! Downloading files...";
+                statusSuccess = true;
+                StateHasChanged();
+                
+                // Automatically download all SVG files
+                await DownloadAllSvgFiles();
+            }
+            else
+            {
+                statusMessage = "❌ Failed to render any diagrams.";
+                statusSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error extracting SVG files: {ex.Message}";
+            statusSuccess = false;
+        }
+        finally
+        {
+            isExtracting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadSingleSvg(MermaidDiagram diagram, int index)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(diagram.RenderedSvg))
+            {
+                statusMessage = "❌ No SVG content to download.";
+                statusSuccess = false;
+                return;
+            }
+
+            var fileName = $"mermaid-diagram-{index}.svg";
+            var svgBytes = System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg);
+            var base64 = Convert.ToBase64String(svgBytes);
+            
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "image/svg+xml", base64);
+            
+            statusMessage = $"✅ Downloaded: {fileName} ({svgBytes.Length} bytes)";
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error downloading SVG: {ex.Message}";
+            statusSuccess = false;
+        }
+    }
+
+    private async Task DownloadAllSvgFiles()
+    {
+        try
+        {
+            statusMessage = "Downloading SVG files...";
+            statusSuccess = true;
+            StateHasChanged();
+
+            for (int i = 0; i < extractedDiagrams.Count; i++)
+            {
+                var diagram = extractedDiagrams[i];
+                if (!string.IsNullOrEmpty(diagram.RenderedSvg))
+                {
+                    var fileName = $"mermaid-diagram-{i + 1}.svg";
+                    var svgBytes = System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg);
+                    var base64 = Convert.ToBase64String(svgBytes);
+                    
+                    await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "image/svg+xml", base64);
+                    
+                    // Update status with progress
+                    statusMessage = $"Downloaded {i + 1} of {extractedDiagrams.Count} SVG files...";
+                    StateHasChanged();
+                    
+                    // Small delay to prevent browser from blocking multiple downloads
+                    if (i < extractedDiagrams.Count - 1)
+                    {
+                        await Task.Delay(300);
+                    }
+                }
+            }
+
+            statusMessage = $"✅ All done! Downloaded {extractedDiagrams.Count} SVG files ready for pandoc!";
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error downloading files: {ex.Message}";
+            statusSuccess = false;
+        }
+    }
+
+    private async Task DownloadAllSvgAsZip()
+    {
+        // Keep the old method for the manual button
+        await DownloadAllSvgFiles();
+    }
+
+    private async Task UpdateMarkdownAndExport()
+    {
+        isProcessing = true;
+        statusMessage = "Updating markdown with SVG links...";
+        statusSuccess = true;
+        StateHasChanged();
+
+        try
+        {
+            // Replace Mermaid code blocks with SVG image references
+            updatedMarkdown = markdownContent;
+            
+            // Normalize the path - ensure it ends with / if not empty
+            var pathPrefix = string.IsNullOrWhiteSpace(svgFolderPath) ? "" : svgFolderPath.TrimEnd('/') + "/";
+            
+            for (int i = 0; i < extractedDiagrams.Count; i++)
+            {
+                var diagram = extractedDiagrams[i];
+                var svgFileName = $"{pathPrefix}mermaid-diagram-{i + 1}.svg";
+                
+                // Find and replace the Mermaid code block with an image reference
+                var mermaidPattern = @"```mermaid\s*" + System.Text.RegularExpressions.Regex.Escape(diagram.Code.Trim()) + @"\s*```";
+                var imageLink = $"![Mermaid Diagram {i + 1}]({svgFileName})";
+                
+                updatedMarkdown = System.Text.RegularExpressions.Regex.Replace(
+                    updatedMarkdown, 
+                    mermaidPattern, 
+                    imageLink, 
+                    System.Text.RegularExpressions.RegexOptions.Singleline
+                );
+            }
+
+            statusMessage = $"✅ Markdown updated with {extractedDiagrams.Count} SVG links! You can now download the updated markdown.";
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error updating markdown: {ex.Message}";
+            statusSuccess = false;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task DownloadUpdatedMarkdown()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(updatedMarkdown))
+            {
+                statusMessage = "❌ No updated markdown to download.";
+                statusSuccess = false;
+                return;
+            }
+
+            var fileName = "document-with-svgs.md";
+            var markdownBytes = System.Text.Encoding.UTF8.GetBytes(updatedMarkdown);
+            var base64 = Convert.ToBase64String(markdownBytes);
+            
+            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "text/markdown", base64);
+            
+            statusMessage = $"✅ Downloaded: {fileName} ({markdownBytes.Length} bytes) - Ready for pandoc!";
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error downloading markdown: {ex.Message}";
+            statusSuccess = false;
+        }
+    }
+
+    private async Task RunCompleteWorkflow()
+    {
+        if (string.IsNullOrWhiteSpace(markdownContent))
+        {
+            statusMessage = "Please enter some markdown content first.";
+            statusSuccess = false;
+            return;
+        }
+
+        isProcessing = true;
+        workflowComplete = false;
+        workflowStatus = "Starting workflow...";
+        StateHasChanged();
+
+        try
+        {
+            // Step 1: Extract Mermaid diagrams
+            workflowStatus = "Step 1/4: Extracting Mermaid diagrams...";
+            StateHasChanged();
+            
+            extractedDiagrams.Clear();
+            var diagrams = MarkdownParser.ExtractMermaidDiagrams(markdownContent);
+            
+            if (!diagrams.Any())
+            {
+                statusMessage = "❌ No Mermaid diagrams found in the markdown content.";
+                statusSuccess = false;
+                isProcessing = false;
+                return;
+            }
+
+            // Step 2: Render SVGs (and PNGs for Word)
+            workflowStatus = $"Step 2/4: Rendering {diagrams.Count} diagram(s)...";
+            StateHasChanged();
+            await Task.Delay(100);
+
+            foreach (var diagram in diagrams)
+            {
+                try
+                {
+                    // Render original SVG
+                    var svgResult = await JSRuntime.InvokeAsync<string>("renderMermaidOriginal", diagram.Code, diagram.Id);
+                    diagram.RenderedSvg = svgResult;
+                    
+                    // Also render to PNG for Word document (PNG works perfectly in Word)
+                    if (outputFormat == OutputFormat.WordDocument)
+                    {
+                        try
+                        {
+                            var pngBase64 = await JSRuntime.InvokeAsync<string>("convertSvgToPng", svgResult, 1200, 900);
+                            diagram.RenderedPng = pngBase64;
+                            Console.WriteLine($"PNG generated for {diagram.Id}, base64 length: {pngBase64?.Length ?? 0}");
+                        }
+                        catch (Exception pngEx)
+                        {
+                            Console.WriteLine($"Warning: Could not generate PNG for {diagram.Id}: {pngEx.Message}");
+                        }
+                    }
+                    
+                    extractedDiagrams.Add(diagram);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error rendering diagram {diagram.Id}: {ex.Message}");
+                }
+            }
+
+            if (!extractedDiagrams.Any())
+            {
+                statusMessage = "❌ Failed to render any diagrams.";
+                statusSuccess = false;
+                isProcessing = false;
+                return;
+            }
+
+            // Step 3: Download all SVG files
+            workflowStatus = $"Step 3/4: Downloading {extractedDiagrams.Count} SVG file(s)...";
+            StateHasChanged();
+
+            for (int i = 0; i < extractedDiagrams.Count; i++)
+            {
+                var diagram = extractedDiagrams[i];
+                if (!string.IsNullOrEmpty(diagram.RenderedSvg))
+                {
+                    var fileName = $"mermaid-diagram-{i + 1}.svg";
+                    var svgBytes = System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg);
+                    var base64 = Convert.ToBase64String(svgBytes);
+                    
+                    await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "image/svg+xml", base64);
+                    
+                    if (i < extractedDiagrams.Count - 1)
+                    {
+                        await Task.Delay(300);
+                    }
+                }
+            }
+
+            // Step 4: Update markdown and download
+            workflowStatus = "Step 4/4: Creating updated markdown...";
+            StateHasChanged();
+
+            updatedMarkdown = markdownContent;
+            var pathPrefix = string.IsNullOrWhiteSpace(svgFolderPath) ? "" : svgFolderPath.TrimEnd('/') + "/";
+            
+            for (int i = 0; i < extractedDiagrams.Count; i++)
+            {
+                var diagram = extractedDiagrams[i];
+                var svgFileName = $"{pathPrefix}mermaid-diagram-{i + 1}.svg";
+                var mermaidPattern = @"```mermaid\s*" + System.Text.RegularExpressions.Regex.Escape(diagram.Code.Trim()) + @"\s*```";
+                var imageLink = $"![Mermaid Diagram {i + 1}]({svgFileName})";
+                
+                updatedMarkdown = System.Text.RegularExpressions.Regex.Replace(
+                    updatedMarkdown, 
+                    mermaidPattern, 
+                    imageLink, 
+                    System.Text.RegularExpressions.RegexOptions.Singleline
+                );
+            }
+
+            // Step 5: Generate output based on format
+            if (outputFormat == OutputFormat.WordDocument)
+            {
+                // Generate Word document directly!
+                workflowStatus = "Step 5/5: Generating Word document with embedded diagrams...";
+                StateHasChanged();
+                await Task.Delay(100);
+
+                // Convert the updated markdown to HTML first
+                var htmlOutput = Markdig.Markdown.ToHtml(updatedMarkdown);
+                
+                // Use PNG data URIs for Word (PNG renders perfectly in Word, better than SVG)
+                for (int i = 0; i < extractedDiagrams.Count; i++)
+                {
+                    var diagram = extractedDiagrams[i];
+                    var svgFileName = $"{(string.IsNullOrWhiteSpace(svgFolderPath) ? "" : svgFolderPath.TrimEnd('/') + "/")}mermaid-diagram-{i + 1}.svg";
+                    
+                    // Use PNG if available (better Word compatibility), otherwise fall back to SVG
+                    string dataUri;
+                    if (!string.IsNullOrEmpty(diagram.RenderedPng))
+                    {
+                        dataUri = $"data:image/png;base64,{diagram.RenderedPng}";
+                        Console.WriteLine($"Using PNG for diagram {i + 1} in Word document");
+                    }
+                    else
+                    {
+                        var svgBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg));
+                        dataUri = $"data:image/svg+xml;base64,{svgBase64}";
+                        Console.WriteLine($"Falling back to SVG for diagram {i + 1} in Word document");
+                    }
+                    
+                    // Replace file references with data URIs
+                    htmlOutput = htmlOutput.Replace($"src=\"{svgFileName}\"", $"src='{dataUri}'");
+                }
+
+                // Generate the DOCX
+                var docxResult = await DocxConverter.ConvertToDocx(htmlOutput, extractedDiagrams, "output.docx");
+                
+                if (docxResult.Success && docxResult.FileData != null)
+                {
+                    var docxBase64 = Convert.ToBase64String(docxResult.FileData);
+                    await JSRuntime.InvokeVoidAsync("downloadFile", docxResult.FileName, docxResult.MimeType, docxBase64);
+                    
+                    workflowComplete = true;
+                    statusMessage = $"🎉 SUCCESS! Downloaded Word document with {extractedDiagrams.Count} embedded diagrams (high-quality PNG)!";
+                    statusSuccess = true;
+                }
+                else
+                {
+                    statusMessage = $"❌ Error generating Word document: {docxResult.ErrorMessage}";
+                    statusSuccess = false;
+                }
+            }
+            else
+            {
+                // Original workflow: Download SVGs and markdown separately
+                await Task.Delay(500); // Small delay after last SVG download
+                var markdownFileName = "document-with-svgs.md";
+                var markdownBytes = System.Text.Encoding.UTF8.GetBytes(updatedMarkdown);
+                var markdownBase64 = Convert.ToBase64String(markdownBytes);
+                await JSRuntime.InvokeVoidAsync("downloadFile", markdownFileName, "text/markdown", markdownBase64);
+
+                workflowComplete = true;
+                statusMessage = $"🎉 Complete! Downloaded {extractedDiagrams.Count} SVG files + updated markdown. See instructions below!";
+                statusSuccess = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error in workflow: {ex.Message}";
+            statusSuccess = false;
+        }
+        finally
+        {
+            isProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            statusMessage = "✅ Command copied to clipboard!";
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Could not copy: {ex.Message}";
+            statusSuccess = false;
+        }
+    }
+}

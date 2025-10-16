@@ -1,0 +1,53 @@
+## Build Output
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Visual Studio / Rider
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+
+## User-specific files
+*.rsuser
+
+## Blazor Output
+wwwroot/css/app.css.map
+wwwroot/css/bootstrap/
+
+## OS Files
+.DS_Store
+Thumbs.db
+
+## Publish
+publish/
+*.pubxml
+*.PublishSettings
+
+## NuGet
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Test Results
+TestResults/
+*.trx
+*.coverage
+
+## Temporary Files
+tmp/
+temp/
+*.tmp
+
+## Environment Files
+.env
+.env.local
+.env.*.local

@@ -1,0 +1,295 @@
+@page "/svg-extractor"
+@using MDConverter.Services
+@using MDConverter.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+@inject MermaidService MermaidService
+@inject MarkdownParser MarkdownParser
+
+<PageTitle>Diagram Extractor</PageTitle>
+
+<h1>🎨 Mermaid Diagram Extractor</h1>
+
+<div class="alert alert-info">
+    <strong>📝 Simple Diagram Export:</strong>
+    <ol>
+        <li>Upload your Markdown file (or paste content below)</li>
+        <li>Choose your output format: PNG or SVG</li>
+        <li>Click "Extract & Download" - all Mermaid diagrams are automatically extracted!</li>
+    </ol>
+    <div class="mt-2">
+        <strong>Format Guide:</strong>
+        <ul class="mb-0">
+            <li><strong>PNG:</strong> Best for Word, PowerPoint, email - works everywhere!</li>
+            <li><strong>SVG:</strong> Perfect for web, design tools - infinitely scalable!</li>
+        </ul>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(statusMessage))
+{
+    <div class="alert @(statusSuccess ? "alert-success" : "alert-danger")">
+        @statusMessage
+    </div>
+}
+
+@if (isProcessing)
+{
+    <div class="alert alert-info">
+        <div class="d-flex align-items-center">
+            <div class="spinner-border spinner-border-sm me-2"></div>
+            <div>@workflowStatus</div>
+        </div>
+    </div>
+}
+
+<div class="mb-3">
+    <label class="form-label"><strong>📁 Upload Markdown File:</strong></label>
+    <InputFile OnChange="HandleFileSelected" class="form-control" accept=".md,.markdown" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label"><strong>📝 Or Paste Markdown Content:</strong></label>
+    <textarea @bind="markdownContent" class="form-control font-monospace" rows="15" 
+              placeholder="# Your Markdown
+
+```mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+```"></textarea>
+</div>
+
+<div class="mb-3">
+    <label class="form-label"><strong>📦 Output Format:</strong></label>
+    <div class="btn-group w-100" role="group">
+        <input type="radio" class="btn-check" name="outputFormat" id="formatPng" 
+               checked="@(outputFormat == "png")"
+               @onchange="@(() => outputFormat = "png")" />
+        <label class="btn btn-outline-primary" for="formatPng">
+            🖼️ PNG (High Quality)
+        </label>
+
+        <input type="radio" class="btn-check" name="outputFormat" id="formatSvg"
+               checked="@(outputFormat == "svg")"
+               @onchange="@(() => outputFormat = "svg")" />
+        <label class="btn btn-outline-success" for="formatSvg">
+            📐 SVG (Vector)
+        </label>
+    </div>
+    <small class="text-muted">
+        @if (outputFormat == "png")
+        {
+            <text>PNG: Best for Word, PowerPoint, and general use (raster image)</text>
+        }
+        else
+        {
+            <text>SVG: Perfect for web and scalable graphics (vector image)</text>
+        }
+    </small>
+</div>
+
+<button class="btn btn-primary btn-lg" @onclick="ExtractAndDownload" disabled="@(string.IsNullOrEmpty(markdownContent) || isProcessing)">
+    @if (isProcessing)
+    {
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        <span>Processing...</span>
+    }
+    else
+    {
+        <span>🚀 Extract & Download @(outputFormat.ToUpper()) Files</span>
+    }
+</button>
+
+@if (extractedDiagrams.Any())
+{
+    <div class="mt-4">
+        <h3>📊 Extracted Diagrams (@extractedDiagrams.Count)</h3>
+        <div class="row">
+            @foreach (var (diagram, index) in extractedDiagrams.Select((d, i) => (d, i)))
+            {
+                <div class="col-md-6 mb-3">
+                    <div class="card">
+                        <div class="card-header">
+                            <strong>Diagram @(index + 1)</strong>
+                        </div>
+                        <div class="card-body">
+                            @if (!string.IsNullOrEmpty(diagram.RenderedSvg))
+                            {
+                                <div style="border: 1px solid #ddd; padding: 10px; background: white;">
+                                    @((MarkupString)diagram.RenderedSvg)
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string markdownContent = "";
+    private List<MermaidDiagram> extractedDiagrams = new();
+    private bool isProcessing = false;
+    private string statusMessage = "";
+    private bool statusSuccess = false;
+    private string workflowStatus = "";
+    private string outputFormat = "png"; // Default to PNG
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            statusMessage = "";
+            var file = e.File;
+            
+            if (file == null)
+                return;
+
+            // Read file content directly using Blazor's stream API
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB max
+            using var reader = new System.IO.StreamReader(stream);
+            markdownContent = await reader.ReadToEndAsync();
+            
+            statusMessage = $"✅ Loaded file: {file.Name} ({file.Size:N0} bytes)";
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error reading file: {ex.Message}";
+            statusSuccess = false;
+        }
+    }
+
+    private async Task ExtractAndDownload()
+    {
+        try
+        {
+            isProcessing = true;
+            statusMessage = "";
+            extractedDiagrams.Clear();
+            StateHasChanged();
+
+            // Step 1: Extract Mermaid diagrams
+            workflowStatus = "Step 1/3: Extracting Mermaid diagrams from markdown...";
+            StateHasChanged();
+            await Task.Delay(100);
+
+            extractedDiagrams = MarkdownParser.ExtractMermaidDiagrams(markdownContent);
+            
+            if (!extractedDiagrams.Any())
+            {
+                statusMessage = "⚠️ No Mermaid diagrams found in the markdown content.";
+                statusSuccess = false;
+                return;
+            }
+
+            Console.WriteLine($"Found {extractedDiagrams.Count} Mermaid diagrams");
+
+            // Step 2: Render to SVG
+            workflowStatus = $"Step 2/3: Rendering {extractedDiagrams.Count} diagrams to SVG...";
+            StateHasChanged();
+            await Task.Delay(100);
+
+            foreach (var diagram in extractedDiagrams)
+            {
+                try
+                {
+                    var svgResult = await JSRuntime.InvokeAsync<string>("renderMermaidOriginal", diagram.Code);
+                    diagram.RenderedSvg = svgResult;
+                    Console.WriteLine($"Rendered diagram: {svgResult.Substring(0, Math.Min(100, svgResult.Length))}...");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error rendering diagram: {ex.Message}");
+                    diagram.RenderedSvg = $"<!-- Error rendering: {ex.Message} -->";
+                }
+            }
+
+            // Step 3: Download files based on selected format
+            if (outputFormat == "svg")
+            {
+                workflowStatus = $"Step 3/3: Downloading SVG files...";
+                StateHasChanged();
+                await Task.Delay(100);
+
+                for (int i = 0; i < extractedDiagrams.Count; i++)
+                {
+                    var diagram = extractedDiagrams[i];
+                    
+                    try
+                    {
+                        // Download SVG directly
+                        var svgBytes = System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg);
+                        var svgBase64 = Convert.ToBase64String(svgBytes);
+                        var fileName = $"mermaid-diagram-{i + 1}.svg";
+                        await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "image/svg+xml", svgBase64);
+                        Console.WriteLine($"Downloaded: {fileName}");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error downloading diagram {i + 1} as SVG: {ex.Message}");
+                    }
+                    
+                    // Small delay between downloads
+                    await Task.Delay(300);
+                }
+
+                statusMessage = $"🎉 SUCCESS! Downloaded {extractedDiagrams.Count} SVG files!";
+            }
+            else // PNG format
+            {
+                workflowStatus = $"Step 3/3: Converting to PNG and downloading...";
+                StateHasChanged();
+                await Task.Delay(100);
+
+                for (int i = 0; i < extractedDiagrams.Count; i++)
+                {
+                    var diagram = extractedDiagrams[i];
+                    
+                    try
+                    {
+                        // Convert SVG to high-quality PNG (1600x1200 for excellent quality)
+                        var pngBase64 = await JSRuntime.InvokeAsync<string>("convertSvgToPng", diagram.RenderedSvg, 1600, 1200);
+                        
+                        if (!string.IsNullOrEmpty(pngBase64))
+                        {
+                            // Download the PNG file
+                            var fileName = $"mermaid-diagram-{i + 1}.png";
+                            await JSRuntime.InvokeVoidAsync("downloadFile", fileName, "image/png", pngBase64);
+                            Console.WriteLine($"Downloaded: {fileName}");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to convert diagram {i + 1} to PNG");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error converting diagram {i + 1} to PNG: {ex.Message}");
+                    }
+                    
+                    // Small delay between downloads to avoid overwhelming the browser
+                    await Task.Delay(300);
+                }
+
+                statusMessage = $"🎉 SUCCESS! Downloaded {extractedDiagrams.Count} PNG files!";
+            }
+            
+            statusSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error: {ex.Message}";
+            statusSuccess = false;
+            Console.WriteLine($"Error in workflow: {ex}");
+        }
+        finally
+        {
+            isProcessing = false;
+            workflowStatus = "";
+            StateHasChanged();
+        }
+    }
+}

@@ -1,0 +1,596 @@
+﻿@page "/"
+@using System.Text.RegularExpressions
+@using MDConverter.Services
+@using MDConverter.Models
+@inject MarkdownParser MarkdownParser
+@inject DocxConverter DocxConverter
+@inject PdfConverter PdfConverter
+@inject MermaidService MermaidService
+@inject IJSRuntime JSRuntime
+
+<PageTitle>MD Converter - AI Agent Document Export</PageTitle>
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-file-earmark-text"></i> Markdown Document Converter
+                    </h1>
+                    <p class="mb-0 small">Convert Markdown to Word, PDF, or HTML - Mermaid diagrams preserved!</p>
+                </div>
+                <div class="card-body">
+                    <!-- File Upload Section -->
+                    <div class="mb-4">
+                        <label for="fileInput" class="form-label fw-bold">Upload Markdown File</label>
+                        <InputFile id="fileInput" OnChange="HandleFileSelected" class="form-control" accept=".md,.markdown" />
+                        <small class="text-muted">Or paste your markdown content below</small>
+                    </div>
+
+                    <!-- Markdown Input Section -->
+                    <div class="mb-4">
+                        <label for="markdownInput" class="form-label fw-bold">Markdown Content</label>
+                        <textarea @bind="markdownContent" 
+                                  id="markdownInput"
+                                  class="form-control font-monospace" 
+                                  rows="15" 
+                                  placeholder="# Your Markdown Here
+
+## Example with Mermaid
+
+```mermaid
+graph TD
+    A[Start] --> B[Process]
+    B --> C[End]
+```
+
+Write your **markdown** content here...">
+                        </textarea>
+                    </div>
+
+                    <!-- Convert Button -->
+                    <div class="alert alert-info mb-4" role="alert">
+                        <i class="bi bi-info-circle-fill"></i> 🚀 One-click conversion: Mermaid diagrams → PNG → Word document!
+                    </div>
+
+                    <!-- Convert Button -->
+                    <div class="d-grid gap-2">
+                        <button @onclick="ConvertDocument" 
+                                class="btn btn-primary btn-lg" 
+                                disabled="@isConverting">
+                            @if (isConverting)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span>Converting...</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-arrow-repeat"></i>
+                                <span>Convert & Download</span>
+                            }
+                        </button>
+                    </div>
+
+                    <!-- Status Messages -->
+                    @if (!string.IsNullOrEmpty(statusMessage))
+                    {
+                        <div class="alert @(statusSuccess ? "alert-success" : "alert-danger") mt-3" role="alert">
+                            @statusMessage
+                        </div>
+                    }
+
+                    <!-- Pandoc Command Display -->
+                    @if (!string.IsNullOrEmpty(pandocCommand))
+                    {
+                        <div class="card mt-3">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">
+                                    <i class="bi bi-terminal"></i> Pandoc Command
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="mb-2"><strong>Run this command in your terminal:</strong></p>
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control font-monospace bg-dark text-light" 
+                                           value="@pandocCommand" readonly />
+                                    <button class="btn btn-outline-secondary" type="button" @onclick="() => CopyToClipboard(pandocCommand)">
+                                        <i class="bi bi-clipboard"></i> Copy
+                                    </button>
+                                </div>
+                                <div class="alert alert-info mb-0">
+                                    <strong>💡 Tips:</strong>
+                                    <ul class="mb-0">
+                                        <li><strong>For Word:</strong> <code>pandoc {fileName}-updated.md -o {fileName}.docx</code></li>
+                                        <li><strong>For PDF:</strong> <code>pandoc {fileName}-updated.md -o {fileName}.pdf</code></li>
+                                        <li><strong>For HTML:</strong> <code>pandoc {fileName}-updated.md -o {fileName}.html</code></li>
+                                        <li>Make sure all PNG files are in the same directory as the markdown file</li>
+                                        <li>Install pandoc: <code>brew install pandoc</code> (macOS) or visit <a href="https://pandoc.org/installing.html" target="_blank">pandoc.org</a></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Preview Section -->
+                    @if (showPreview && !string.IsNullOrEmpty(previewHtml))
+                    {
+                        <div class="mt-4">
+                            <div class="card">
+                                <div class="card-header bg-secondary text-white">
+                                    <h5 class="mb-0">Preview</h5>
+                                </div>
+                                <div class="card-body preview-content">
+                                    @((MarkupString)previewHtml)
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Features</h5>
+                    <ul class="mb-0">
+                        <li>✅ Convert Markdown to Word (DOCX), PDF, or HTML</li>
+                        <li>✅ Preserve Mermaid diagrams in all formats</li>
+                        <li>✅ Support for tables, lists, code blocks, and formatting</li>
+                        <li>✅ Runs entirely in your browser (WASM-powered)</li>
+                        <li>✅ AI Agent friendly - paste or upload content</li>
+                        <li>✅ No server needed - all processing happens client-side</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string markdownContent = @"# Sample Markdown Document
+
+## Introduction
+This is a **sample document** with various markdown elements.
+
+## Mermaid Diagram Example
+
+```mermaid
+graph LR
+    A[Start] --> B{Decision}
+    B -->|Yes| C[Action 1]
+    B -->|No| D[Action 2]
+    C --> E[End]
+    D --> E
+```
+
+## Features
+- Bullet point 1
+- Bullet point 2
+- Bullet point 3
+
+## Code Example
+```csharp
+public class Example {
+    public void Method() {
+        Console.WriteLine(""Hello World"");
+    }
+}
+```
+
+## Table Example
+| Column 1 | Column 2 | Column 3 |
+|----------|----------|----------|
+| Data 1   | Data 2   | Data 3   |
+| Data 4   | Data 5   | Data 6   |
+";
+
+    private ExportFormat selectedFormat = ExportFormat.Pandoc; // Default to Pandoc workflow
+    private string pandocCommand = "";
+    private string fileName = "document";
+    private bool isConverting = false;
+    private string statusMessage = "";
+    private bool statusSuccess = false;
+    private bool showPreview = false;
+    private string previewHtml = "";
+
+    // Note: Mermaid is now auto-initialized in index.html using ESM import
+    // No need for OnAfterRenderAsync initialization
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file != null)
+        {
+            try
+            {
+                using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB limit
+                using var reader = new StreamReader(stream);
+                markdownContent = await reader.ReadToEndAsync();
+                fileName = Path.GetFileNameWithoutExtension(file.Name);
+                statusMessage = $"File '{file.Name}' loaded successfully!";
+                statusSuccess = true;
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                statusMessage = $"Error loading file: {ex.Message}";
+                statusSuccess = false;
+            }
+        }
+    }
+
+    private async Task ConvertDocument()
+    {
+        if (string.IsNullOrWhiteSpace(markdownContent))
+        {
+            statusMessage = "Please enter some markdown content first.";
+            statusSuccess = false;
+            return;
+        }
+
+        isConverting = true;
+        statusMessage = "Step 1/5: Extracting Mermaid diagrams...";
+        statusSuccess = true;
+        StateHasChanged();
+
+        try
+        {
+            // Step 1: Extract Mermaid diagrams from markdown (don't convert yet)
+            var diagrams = MarkdownParser.ExtractMermaidDiagrams(markdownContent);
+            
+            if (!diagrams.Any())
+            {
+                // No diagrams, just convert the markdown directly
+                statusMessage = "No Mermaid diagrams found. Converting markdown...";
+                StateHasChanged();
+                await Task.Delay(100);
+                
+                var html = Markdig.Markdown.ToHtml(markdownContent);
+                await GenerateOutputFile(html, new List<MermaidDiagram>());
+                return;
+            }
+
+            Console.WriteLine($"Found {diagrams.Count} Mermaid diagrams");
+
+            // Step 2: Render Mermaid diagrams to SVG
+            statusMessage = $"Step 2/5: Rendering {diagrams.Count} diagram(s) to SVG...";
+            StateHasChanged();
+            await Task.Delay(100);
+
+            foreach (var diagram in diagrams)
+            {
+                try
+                {
+                    var svgResult = await JSRuntime.InvokeAsync<string>("renderMermaidOriginal", diagram.Code);
+                    diagram.RenderedSvg = svgResult;
+                    Console.WriteLine($"Rendered diagram to SVG");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error rendering diagram: {ex.Message}");
+                    diagram.RenderedSvg = $"<!-- Error rendering: {ex.Message} -->";
+                }
+            }
+            
+            // Step 3: Convert to PNG (for all formats except HTML)
+            if (selectedFormat == ExportFormat.Html)
+            {
+                statusMessage = $"Step 3/5: Keeping diagrams as SVG for web...";
+            }
+            else
+            {
+                statusMessage = $"Step 3/5: Converting diagrams to high-quality PNG...";
+                StateHasChanged();
+                await Task.Delay(100);
+                
+                foreach (var diagram in diagrams)
+                {
+                    try
+                    {
+                        // Convert to PNG with proper aspect ratio preservation
+                        var pngBase64 = await JSRuntime.InvokeAsync<string>("convertSvgToPng", diagram.RenderedSvg, 1600, 1200);
+                        if (!string.IsNullOrEmpty(pngBase64))
+                        {
+                            diagram.RenderedPng = pngBase64;
+                            Console.WriteLine($"Converted diagram to PNG successfully");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error converting to PNG: {ex.Message}");
+                    }
+                }
+            }
+            
+            // Step 4: Handle "Files" and "Pandoc" formats - process in memory
+            if (selectedFormat == ExportFormat.Files || selectedFormat == ExportFormat.Pandoc)
+            {
+                // Step 4: Update markdown in memory (no download)
+                statusMessage = $"Step 4/5: Updating markdown with image references...";
+                StateHasChanged();
+                await Task.Delay(100);
+                
+                string updatedMarkdown = markdownContent;
+                Console.WriteLine($"Original markdown length: {markdownContent.Length}");
+                
+                for (int i = 0; i < diagrams.Count; i++)
+                {
+                    var diagram = diagrams[i];
+                    
+                    // More robust pattern - match the entire mermaid code block
+                    var pattern = @"```mermaid\s*\n" + Regex.Escape(diagram.Code.Trim()) + @"\s*\n```";
+                    var imageRef = $"![Mermaid Diagram {i + 1}](mermaid-diagram-{i + 1}.png)";
+                    
+                    Console.WriteLine($"Attempting to replace diagram {i + 1}");
+                    Console.WriteLine($"Pattern: {pattern.Substring(0, Math.Min(100, pattern.Length))}...");
+                    Console.WriteLine($"Looking for code: {diagram.Code.Substring(0, Math.Min(50, diagram.Code.Length))}...");
+                    
+                    var beforeLength = updatedMarkdown.Length;
+                    updatedMarkdown = Regex.Replace(updatedMarkdown, pattern, imageRef, RegexOptions.Singleline);
+                    var afterLength = updatedMarkdown.Length;
+                    
+                    if (beforeLength != afterLength)
+                    {
+                        Console.WriteLine($"✓ Replaced diagram {i + 1} (length changed from {beforeLength} to {afterLength})");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"✗ No replacement made for diagram {i + 1} - trying alternative pattern");
+                        
+                        // Try a more flexible pattern
+                        var flexiblePattern = "```mermaid[\\s\\S]*?" + Regex.Escape(diagram.Code.Trim().Split('\n')[0]) + "[\\s\\S]*?```";
+                        updatedMarkdown = Regex.Replace(updatedMarkdown, flexiblePattern, imageRef, RegexOptions.Singleline);
+                        
+                        if (updatedMarkdown.Length != beforeLength)
+                        {
+                            Console.WriteLine($"✓ Replaced with flexible pattern");
+                        }
+                    }
+                }
+                
+                Console.WriteLine($"Updated markdown length: {updatedMarkdown.Length}");
+                Console.WriteLine($"Number of image references: {Regex.Matches(updatedMarkdown, @"!\[Mermaid Diagram").Count}");
+                
+                // Generate DOCX if Pandoc format selected
+                if (selectedFormat == ExportFormat.Pandoc)
+                {
+                    statusMessage = $"Step 5/5: Generating Word document...";
+                    StateHasChanged();
+                    await Task.Delay(100);
+                    
+                    Console.WriteLine("Converting updated markdown to HTML...");
+                    Console.WriteLine($"Updated markdown preview: {updatedMarkdown.Substring(0, Math.Min(200, updatedMarkdown.Length))}...");
+                    
+                    // Convert UPDATED markdown to HTML (this should have image links, not mermaid blocks)
+                    var finalHtml = Markdig.Markdown.ToHtml(updatedMarkdown);
+                    
+                    Console.WriteLine($"Converted HTML preview: {finalHtml.Substring(0, Math.Min(200, finalHtml.Length))}...");
+                    Console.WriteLine($"HTML contains mermaid-diagram references: {finalHtml.Contains("mermaid-diagram")}");
+                    
+                    // Replace image references with PNG data URIs
+                    for (int i = 0; i < diagrams.Count; i++)
+                    {
+                        var diagram = diagrams[i];
+                        var imagePlaceholder = $"mermaid-diagram-{i + 1}.png";
+                        
+                        Console.WriteLine($"Looking for: {imagePlaceholder}");
+                        Console.WriteLine($"HTML contains it: {finalHtml.Contains(imagePlaceholder)}");
+                        
+                        if (!string.IsNullOrEmpty(diagram.RenderedPng))
+                        {
+                            var dataUri = $"data:image/png;base64,{diagram.RenderedPng}";
+                            
+                            // Replace both possible formats
+                            finalHtml = finalHtml.Replace($"src=\"{imagePlaceholder}\"", $"src=\"{dataUri}\"");
+                            finalHtml = finalHtml.Replace($"src='{imagePlaceholder}'", $"src='{dataUri}'");
+                            
+                            Console.WriteLine($"Replaced {imagePlaceholder} with PNG data URI");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"⚠️ No PNG data for diagram {i + 1}");
+                        }
+                    }
+                    
+                    Console.WriteLine($"Final HTML still contains mermaid-diagram: {finalHtml.Contains("mermaid-diagram")}");
+                    
+                    // Generate DOCX
+                    var docxResult = await DocxConverter.ConvertToDocx(finalHtml, diagrams, $"{fileName}.docx");
+                    
+                    if (docxResult.Success && docxResult.FileData != null)
+                    {
+                        var docxBase64 = Convert.ToBase64String(docxResult.FileData);
+                        await JSRuntime.InvokeVoidAsync("downloadFile", docxResult.FileName, docxResult.MimeType, docxBase64);
+                        
+                        pandocCommand = ""; // Clear command since we generated it directly
+                        statusMessage = $"✅ SUCCESS! Word document generated with {diagrams.Count} embedded diagram(s)!";
+                    }
+                    else
+                    {
+                        pandocCommand = "";
+                        statusMessage = $"❌ DOCX generation failed: {docxResult.ErrorMessage}";
+                    }
+                }
+                
+                statusSuccess = true;
+            }
+
+
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error during conversion: {ex.Message}";
+            statusSuccess = false;
+            Console.WriteLine($"Error in workflow: {ex}");
+        }
+        finally
+        {
+            isConverting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateOutputFile(string html, List<MermaidDiagram> diagrams)
+    {
+        try
+        {
+            // Replace image references with data URIs
+            string finalHtml = html;
+            for (int i = 0; i < diagrams.Count; i++)
+            {
+                var diagram = diagrams[i];
+                var imagePlaceholder = $"mermaid-diagram-{i + 1}.png";
+                
+                // Create data URI based on format
+                string dataUri;
+                if (selectedFormat == ExportFormat.Html)
+                {
+                    // For HTML, use SVG for best quality
+                    var svgBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg));
+                    dataUri = $"data:image/svg+xml;base64,{svgBase64}";
+                }
+                else
+                {
+                    // For DOCX and PDF, use PNG
+                    if (!string.IsNullOrEmpty(diagram.RenderedPng))
+                    {
+                        dataUri = $"data:image/png;base64,{diagram.RenderedPng}";
+                    }
+                    else
+                    {
+                        // Fallback to SVG if PNG conversion failed
+                        var svgBase64 = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(diagram.RenderedSvg));
+                        dataUri = $"data:image/svg+xml;base64,{svgBase64}";
+                    }
+                }
+                
+                // Replace the image reference with data URI
+                finalHtml = finalHtml.Replace($"src=\"{imagePlaceholder}\"", $"src=\"{dataUri}\"");
+            }
+
+            // Generate the output file
+            ConversionResult result;
+            
+            if (selectedFormat == ExportFormat.Docx)
+            {
+                result = await DocxConverter.ConvertToDocx(finalHtml, diagrams, $"{fileName}.docx");
+            }
+            else if (selectedFormat == ExportFormat.Pdf)
+            {
+                result = await PdfConverter.ConvertToPdf(finalHtml, diagrams, $"{fileName}.pdf");
+            }
+            else // HTML
+            {
+                result = await ConvertToHtml(finalHtml, $"{fileName}.html");
+            }
+
+            if (result.Success && result.FileData != null)
+            {
+                // Download the file
+                var base64 = Convert.ToBase64String(result.FileData);
+                await JSRuntime.InvokeVoidAsync("downloadFile", result.FileName, result.MimeType, base64);
+
+                statusMessage = $"✅ Successfully converted and downloaded: {result.FileName}";
+                statusSuccess = true;
+
+                // Show preview for HTML
+                if (selectedFormat == ExportFormat.Html)
+                {
+                    previewHtml = finalHtml;
+                    showPreview = true;
+                }
+            }
+            else
+            {
+                statusMessage = $"❌ Conversion failed: {result.ErrorMessage}";
+                statusSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"❌ Error generating output: {ex.Message}";
+            statusSuccess = false;
+            Console.WriteLine($"Error in GenerateOutputFile: {ex}");
+        }
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            statusMessage = "✅ Copied to clipboard!";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to copy: {ex.Message}");
+            statusMessage = "⚠️ Copy failed - please select and copy manually";
+        }
+    }
+
+    private async Task<ConversionResult> ConvertToHtml(string html, string fileName)
+    {
+        var fullHtml = $@"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <title>{fileName}</title>
+    <style>
+        body {{ 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }}
+        code {{ 
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }}
+        pre {{ 
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }}
+        table {{ 
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+        }}
+        th, td {{ 
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }}
+        th {{ 
+            background-color: #f4f4f4;
+        }}
+        img {{ 
+            max-width: 100%;
+            height: auto;
+        }}
+    </style>
+</head>
+<body>
+    {html}
+</body>
+</html>";
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(fullHtml);
+        
+        return await Task.FromResult(new ConversionResult
+        {
+            Success = true,
+            FileData = bytes,
+            FileName = fileName,
+            MimeType = "text/html"
+        });
+    }
+}

@@ -61,6 +61,22 @@ public class PandocService
             
             Console.WriteLine($"✅ Conversion successful, output size: {result?.Length ?? 0} bytes");
             
+            // WORKAROUND: Pandoc WASM has a bug where it duplicates content in DOCX output
+            // Post-process the DOCX to remove duplicate content
+            if (result != null && result.Length > 0)
+            {
+                try
+                {
+                    result = DocxPostProcessor.RemoveDuplicateContent(result);
+                    Console.WriteLine($"✅ Post-processed DOCX, final size: {result.Length} bytes");
+                }
+                catch (Exception postProcessEx)
+                {
+                    Console.WriteLine($"⚠️ Post-processing failed, returning original DOCX: {postProcessEx.Message}");
+                    // Continue with original result if post-processing fails
+                }
+            }
+            
             return result;
         }
         catch (Exception ex)

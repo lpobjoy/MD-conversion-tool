@@ -144,12 +144,23 @@ export async function convertMarkdownToDocx(markdownContent) {
         const args = ["/in", "-f", "markdown", "-t", "docx", "-o", "/out"];
         console.log('Running: pandoc', args.join(' '));
         
-        pandoc(args);
+        try {
+            // Capture any errors or output from Pandoc
+            const result = pandoc(args);
+            console.log('Pandoc execution result:', result);
+        } catch (pandocError) {
+            console.error('❌ Pandoc execution failed:', pandocError);
+            throw new Error(`Pandoc execution failed: ${pandocError.message || pandocError}`);
+        }
         
         // Read the DOCX binary data from the output file
         const docxBytes = outFile.data;
+        console.log('Output file size after Pandoc:', docxBytes ? docxBytes.length : 0, 'bytes');
         
         if (!docxBytes || docxBytes.length === 0) {
+            console.error('❌ Pandoc produced no output');
+            console.error('Input file size was:', inFile.data.length, 'bytes');
+            console.error('Input content preview:', markdownContent.substring(0, 200) + '...');
             throw new Error('Pandoc produced empty output');
         }
         

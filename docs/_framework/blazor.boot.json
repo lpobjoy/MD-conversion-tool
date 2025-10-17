@@ -1,13 +1,13 @@
 {
   "mainAssemblyName": "MDConverter",
   "resources": {
-    "hash": "sha256-4G8rUjaE126ZpD0Dt9kXzF97zrIkz9RJOtTX2zt7WrY=",
+    "hash": "sha256-kvk8ib/5rUQv1GwNleiKHJofRwet9mGdvQ+ZFfY9Mb0=",
     "fingerprinting": {
-      "DocumentFormat.OpenXml.Framework.ucnh65lgaf.wasm": "DocumentFormat.OpenXml.Framework.wasm",
-      "DocumentFormat.OpenXml.o01liigcfy.wasm": "DocumentFormat.OpenXml.wasm",
+      "DocumentFormat.OpenXml.Framework.mdf55cgnqw.wasm": "DocumentFormat.OpenXml.Framework.wasm",
+      "DocumentFormat.OpenXml.b4bsft6ryj.wasm": "DocumentFormat.OpenXml.wasm",
       "HtmlAgilityPack.st8ng737vz.wasm": "HtmlAgilityPack.wasm",
       "Markdig.b3xwtrjo89.wasm": "Markdig.wasm",
-      "MDConverter.lqvc8m66pg.wasm": "MDConverter.wasm",
+      "MDConverter.qaafvxfhw6.wasm": "MDConverter.wasm",
       "Microsoft.AspNetCore.Components.y7hvu8muzj.wasm": "Microsoft.AspNetCore.Components.wasm",
       "Microsoft.AspNetCore.Components.Web.kskos1h0e2.wasm": "Microsoft.AspNetCore.Components.Web.wasm",
       "Microsoft.AspNetCore.Components.WebAssembly.htbtt4rsib.wasm": "Microsoft.AspNetCore.Components.WebAssembly.wasm",
@@ -89,11 +89,11 @@
       "System.Runtime.InteropServices.JavaScript.0tgicm7vjk.wasm": "sha256-bAbPaONHne7R1hItHoY8/SYWlDb84JZQ1cxd1Y+tJn0="
     },
     "assembly": {
-      "DocumentFormat.OpenXml.Framework.ucnh65lgaf.wasm": "sha256-giV+s7+u9Sn/yw83t6JwH9fGaZSd2gcZ90pB02bWL3k=",
-      "DocumentFormat.OpenXml.o01liigcfy.wasm": "sha256-aNIeSG4cPFoEI+ByIK9qJcUAiLC51K4Ivfx3ErpB+XQ=",
+      "DocumentFormat.OpenXml.Framework.mdf55cgnqw.wasm": "sha256-5o3Jw9+pM7HjRlAoodeyFTi9DAFN7+PEBpBNyVJq3OM=",
+      "DocumentFormat.OpenXml.b4bsft6ryj.wasm": "sha256-tbWtj51wm/LFd6skmHUdU989LYgVzEMCoIT54DKIVrQ=",
       "HtmlAgilityPack.st8ng737vz.wasm": "sha256-cAgxQhMHBpYiWAE4lE7AzfHjP8poxbxtLgsy1oRF+cU=",
       "Markdig.b3xwtrjo89.wasm": "sha256-hyj+5aHc/Z0gokcosJ8D9/8TtYpRRyZJHI9CDtuo4kw=",
-      "MDConverter.lqvc8m66pg.wasm": "sha256-rSvJAMlPE7MsN6hjsVyNjjD0O8wKPLbHfPqCD0qv1wo=",
+      "MDConverter.qaafvxfhw6.wasm": "sha256-4rTAa7aLup0onvH0O4fAZwuCYeLuanjV26zdNUSixv4=",
       "Microsoft.AspNetCore.Components.y7hvu8muzj.wasm": "sha256-Erld1Qbz6s32+o3CgVyz7yv8S3QrElNIPiwelS1e42M=",
       "Microsoft.AspNetCore.Components.Web.kskos1h0e2.wasm": "sha256-RM9f86ISHtoLoE4ZTLWYev21d4PRbuqaqHTCJ9j6Cxg=",
       "Microsoft.AspNetCore.Components.WebAssembly.htbtt4rsib.wasm": "sha256-66H1CgRTQGKDukZJ/gfOjYf6xsG0ZwVLFXKSwKkObq0=",

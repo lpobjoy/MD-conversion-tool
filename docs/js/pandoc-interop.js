@@ -127,12 +127,18 @@ export async function convertMarkdownToDocx(markdownContent) {
         console.log('📝 Converting markdown to DOCX with Pandoc WASM...');
         console.log('Input length:', markdownContent.length, 'characters');
         
+        // CRITICAL: Clear input file BEFORE writing new data
+        // This ensures we don't have leftover data from previous conversions
+        inFile.data = new Uint8Array(0);
+        console.log('🧹 Input file cleared');
+        
         // Write markdown content to the input file
         inFile.data = new TextEncoder().encode(markdownContent);
         console.log('✅ Input file written:', inFile.data.length, 'bytes');
         
         // Clear the output file before running
         outFile.data = new Uint8Array();
+        console.log('🧹 Output file cleared');
         
         // Run pandoc: read from /in, write DOCX to /out
         const args = ["/in", "-f", "markdown", "-t", "docx", "-o", "/out"];
@@ -148,6 +154,15 @@ export async function convertMarkdownToDocx(markdownContent) {
         }
         
         console.log('✅ Conversion complete! Output size:', docxBytes.length, 'bytes');
+        
+        // DEBUG: Check if the DOCX file seems to have duplicate content
+        // DOCX files are ZIP archives containing XML
+        // If content is duplicated, the file will be roughly 2x larger than expected
+        const estimatedSize = markdownContent.length * 3; // Rough estimate
+        if (docxBytes.length > estimatedSize * 2) {
+            console.warn('⚠️ WARNING: Output file is suspiciously large - may contain duplicate content');
+            console.warn('   Expected ~', estimatedSize, 'bytes, got', docxBytes.length, 'bytes');
+        }
         
         return docxBytes;
     } catch (error) {
